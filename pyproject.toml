@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "shopping-assistant"
+version = "0.1.0"
+description = ""
+authors = [{ name = "Abhishek Bhatia", email = "bhatiaabhishek8893@gmail.com" }]
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = ["python-dotenv", "langgraph", "openai-agents", "openai"]
+
+[project.optional-dependencies]
+dev = ["ipykernel", "jupyter notebook"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["shopping_assistant*"]
