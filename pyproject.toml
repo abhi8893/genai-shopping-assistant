@@ -9,10 +9,10 @@ description = ""
 authors = [{ name = "Abhishek Bhatia", email = "bhatiaabhishek8893@gmail.com" }]
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = ["python-dotenv", "langgraph", "openai-agents", "openai"]
+dependencies = ["python-dotenv", "langgraph", "openai-agents", "openai", "langchain", "langchain_community"]
 
-[project.optional-dependencies]
-dev = ["ipykernel", "jupyter notebook"]
+# [project.optional-dependencies]
+# dev = ["ipykernel", "jupyter notebook", "gradio"]
 
 [tool.setuptools.packages.find]
 where = ["."]
