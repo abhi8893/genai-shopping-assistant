@@ -1,13 +1,13 @@
 agents:
   router:
     downstream_routes:
-      # - name: product_search
-      #   description: Helps the user find products in the catalog based on the product name or description.
-      #   examples: |
-      #     - I am looking for headphones under 2000 rupees.
-      #     - Do you have wind cheaters in red and white colour?
-      #     - I want to buy a new laptop.
-      #     - Can you give me some options for phones with good camera?
+      - name: product_search
+        description: Helps the user find products in the catalog based on the product name or description.
+        examples: |
+          - I am looking for headphones under 2000 rupees.
+          - Do you have wind cheaters in red and white colour?
+          - I want to buy a new laptop.
+          - Can you give me some options for phones with good camera?
 
       - name: shopping_actions
         description: Helps the user perform shopping actions such as shoppingcart interaction,
@@ -59,6 +59,29 @@ agents:
     llm: gpt-4o-mini
 
   product_search:
+    catalog_hierarchy_tree: |
+      Template:
+      ```
+      <category>
+          <subcategory>
+      ```
+
+      Values:
+      ```
+      accessories
+        - bag
+        - sunglasses
+      apparel
+        - dress
+        - skirt
+        - top blouse sweater
+      footwear
+        - shoes
+      jewelry
+        - bracelet
+        - earrings
+        - necklace
+      
     prompts:       
       system_prompt: |
         You are a shopping assistant, who helps users find products in an e-commerce store.
@@ -78,9 +101,9 @@ agents:
 
         1. Identify the category from the user query => `category`
 
-        If no category is mentioned, return None and proceed to step 2, else jump to step 3
+        IMPORTANT: ONLY IF NO category can be inferred from the user query, return None and proceed to step 2A, else jump to step 2B
 
-        2A.  Draft a clarification response as a followup to user as `product_clarification_response`. NOW EXIT and populate rest of the fields as None.
+        2A.  Draft a clarification response as a followup to user as `product_clarification_response`. If appropriate, you may include previous recommended products in the clarification response. NOW EXIT and populate rest of the fields as None.
 
         2B. Identify the subcategory from the user query => `subcategory`
 
