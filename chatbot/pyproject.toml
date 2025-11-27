@@ -2,13 +2,13 @@
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
+
 [project]
-name = "shopping-assistant"
+name = "chatbot"
 version = "0.1.0"
-description = ""
-authors = [{ name = "Abhishek Bhatia", email = "bhatiaabhishek8893@gmail.com" }]
-readme = "README.md"
+
 requires-python = ">=3.12"
+
 dependencies = [
     "python-dotenv", "langgraph", 
     "openai-agents", "openai", 
@@ -17,9 +17,6 @@ dependencies = [
     "gradio"
 ]
 
-# [project.optional-dependencies]
-# dev = ["ipykernel", "jupyter notebook", "gradio"]
-
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["shopping_assistant*"]
+include = ["chatbot"]
