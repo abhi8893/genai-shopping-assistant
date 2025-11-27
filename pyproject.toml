@@ -13,7 +13,8 @@ dependencies = [
     "python-dotenv", "langgraph", 
     "openai-agents", "openai", 
     "langchain", "langchain_community",
-    "weaviate-client"
+    "weaviate-client",
+    "gradio"
 ]
 
 # [project.optional-dependencies]
