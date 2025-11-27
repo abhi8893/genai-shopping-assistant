@@ -1,0 +1,113 @@
+import openai
+from weaviate import WeaviateClient
+from chatbot.graph.types import State
+from chatbot.agent_definitions import RouterAgent, ShoppingActionsAgent, CustomerServiceAgent, ProductSearchAgent
+from chatbot.agent_definitions.shopping_actions import Cart
+from langgraph.checkpoint.memory import InMemorySaver
+from chatbot.graph.graph import build_graph
+from langchain_core.runnables import RunnableConfig
+import gradio as gr
+
+
+
+class Chat:
+
+    def __init__(
+        self, 
+        user_id: str, 
+        config: dict,
+        openai_client: openai.OpenAI = None,
+        weaviate_client: WeaviateClient = None,
+    ):
+        self.user_id = user_id
+        self.config = config
+        self.openai_client = openai.OpenAI() if openai_client is None else openai_client
+        self.weaviate_client = weaviate_client
+        
+        self.cart = self._fetch_cart()
+        self.agents = self._initialize_agents(cart=self.cart)
+        self.memory = self._initialize_memory()
+        self.graph = self._build_graph(agents=self.agents, memory=self.memory)
+        self.set_thread("1")
+    
+    def _inner_thread_id(self):
+        return f'{self.user_id}_{self.thread_id}'
+
+    def set_thread(self, thread_id: str):
+        self.thread_id = thread_id
+
+    @property
+    def run_config(self) -> RunnableConfig:
+        return {"configurable": {"thread_id": self.thread_id}}
+
+    async def cli_chat(self, print_user_input: bool = False) -> str:
+
+        while True:
+            user_input = input("User: ")
+            if print_user_input:
+                print("User: " + user_input)
+            if user_input == "exit":
+                print("Assistant: Goodbye!")
+                return 
+            
+            state = State(messages=[
+                {'role': 'user', 'content': user_input}
+            ])
+            new_state = await self.graph.ainvoke(state, self.run_config)
+
+            print(new_state['messages'][-1]['content'])
+
+    def web_ui_chat(self):
+
+        async def chat(user_input: str, history):
+            message = {'role': 'user', 'content': user_input}
+
+            response = await self.graph.ainvoke(State(messages=[message]), self.run_config)
+
+            return response['messages'][-1]['content']
+
+        return gr.ChatInterface(fn=chat, title="Shopping Assistant", ).launch()        
+
+    def _fetch_cart(self) -> Cart:
+        return Cart(user_id=self.user_id)
+
+    def _initialize_agents(self, cart: Cart) -> dict:
+        agents = {}
+
+        agents["router"] = RouterAgent(self.config['agents']['router'], openai_client=self.openai_client)
+        agents["shopping_actions"] = ShoppingActionsAgent(self.config['agents']['shopping_actions'], cart=cart)
+        agents["product_search"] = ProductSearchAgent(self.config['agents']['product_search'], openai_client=self.openai_client, weaviate_client=self.weaviate_client)
+        agents["customer_service"] = CustomerServiceAgent(self.config['agents']['customer_service'], openai_client=self.openai_client)
+
+        return agents
+
+    def _initialize_memory(self):
+        return InMemorySaver()
+
+
+    def _build_graph(self, agents: dict, memory: InMemorySaver):
+        
+        return build_graph(
+            router_agent=agents["router"],
+            shopping_actions_agent=agents["shopping_actions"],
+            customer_service_agent=agents["customer_service"],
+            product_search_agent=agents["product_search"],
+            memory=memory
+        )
+
+
+if __name__ == "__main__":
+    import asyncio
+    from chatbot.config import load_config
+    from chatbot.env import load_env
+    from agents import set_tracing_disabled
+    set_tracing_disabled(True)
+    load_env("/Users/Abhishek_Bhatia-GUVA/personal/projects/ecom-shopping-assistant/genai-shopping-assistant/.env")
+    workflow_config = load_config()
+
+    chat = Chat(user_id="1", config=workflow_config)
+    # asyncio.run(chat.cli_chat())
+    chat.web_ui_chat()
+    
+        
+        
