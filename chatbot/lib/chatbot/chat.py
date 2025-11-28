@@ -40,6 +40,15 @@ class Chat:
     def run_config(self) -> RunnableConfig:
         return {"configurable": {"thread_id": self.thread_id}}
 
+
+    async def query(self, query: str) -> str:
+        state = State(messages=[
+            {'role': 'user', 'content': query}
+        ])
+        new_state = await self.graph.ainvoke(state, self.run_config)
+
+        return new_state['messages'][-1]['content']
+
     async def cli_chat(self, print_user_input: bool = False) -> str:
 
         while True:

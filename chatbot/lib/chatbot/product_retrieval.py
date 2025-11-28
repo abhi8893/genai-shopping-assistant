@@ -3,6 +3,21 @@ import weaviate.classes as wvc
 import functools
 import weaviate
 
+
+class WeaviateConnectionManager:
+
+    def __init__(self, client: WeaviateClient):
+        self.client = client
+
+    def __enter__(self) -> WeaviateClient:
+        self.client.connect()
+        return self.client
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.client.close()
+
+    
+
 def _retrieve_products_client(
     weaviate_client: WeaviateClient,
     filter_obj: wvc.query.Filter,
@@ -74,11 +89,12 @@ def retrieve_products(
                 n=n,
             )
     else:
-        product_retrieval_response = _retrieve_products_client(
-            weaviate_client=weaviate_client,
-            filter_obj=filter_obj,
-            query=query,
-            n=n,
-        )
+        with WeaviateConnectionManager(weaviate_client) as weaviate_client_connected:
+            product_retrieval_response = _retrieve_products_client(
+                weaviate_client=weaviate_client_connected,
+                filter_obj=filter_obj,
+                query=query,
+                n=n,
+            )
 
     return product_retrieval_response
