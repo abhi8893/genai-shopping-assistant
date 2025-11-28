@@ -1,0 +1,30 @@
+FROM python:3.12-slim
+
+WORKDIR /project
+
+## Install uv
+
+# The installer requires curl (and certificates) to download the release archive
+RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
+
+# Download the latest installer
+ADD https://astral.sh/uv/install.sh /uv-installer.sh
+
+# Run the installer then remove it
+RUN sh /uv-installer.sh && rm /uv-installer.sh
+
+# Ensure the installed binary is on the `PATH`
+ENV PATH="/root/.local/bin/:$PATH"
+
+# ENV OPENAI_BASE_URL="https://openai.prod.ai-gateway.quantumblack.com/ba656231-11cf-4f27-b987-433f5fa8fb6c/v1"
+# ENV OPENAI_API_KEY="eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJhZXNKN2kxNGNidnVuTU40MTJrOU5yZ2ROeENhTlJudTNPbC1TU08ycFlJIn0.eyJleHAiOjE3NjQyMzY2MjUsImlhdCI6MTc2NDIzNDgyNiwiYXV0aF90aW1lIjoxNzY0MjM0ODE3LCJqdGkiOiI5NTgyZDBlZC1iMGYyLTRhNGUtODU1Ny01MGQwZTg5YmJjMzQiLCJpc3MiOiJodHRwczovL2F1dGgubWNraW5zZXkuaWQvYXV0aC9yZWFsbXMvciIsImF1ZCI6ImJjZDIzNzI4LTNkMjctNDQ3Yy1hMGE5LWVhY2FmMzkzYTZmNSIsInN1YiI6IjFlODEwNjRhLTM5ZGYtNGVmZi1iNjZhLWNhM2Y2MWMwYWUxMiIsInR5cCI6IklEIiwiYXpwIjoiYmNkMjM3MjgtM2QyNy00NDdjLWEwYTktZWFjYWYzOTNhNmY1Iiwic2Vzc2lvbl9zdGF0ZSI6IjA4OGZkNzVjLWMwZDMtNGZiNS1iM2IxLWY0YmJmYzQ1Y2VkYyIsImF0X2hhc2giOiJ1dGEwOHpqSGRJdlBMSEtNRU8yelpnIiwibmFtZSI6IkFiaGlzaGVrIEJoYXRpYS1HVVZBIiwiZ2l2ZW5fbmFtZSI6IkFiaGlzaGVrIiwiZmFtaWx5X25hbWUiOiJCaGF0aWEtR1VWQSIsInByZWZlcnJlZF91c2VybmFtZSI6IjdjYzlhY2RkNGVkY2IzZTIiLCJlbWFpbCI6IkFiaGlzaGVrX0JoYXRpYS1HVVZBQG1ja2luc2V5LmNvbSIsImFjciI6IjEiLCJzaWQiOiIwODhmZDc1Yy1jMGQzLTRmYjUtYjNiMS1mNGJiZmM0NWNlZGMiLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiZm1ubyI6IjMwOTcyNCIsImdyb3VwcyI6WyJhMzM4OGRkNy1iYjkwLTQwZDYtYTY0OS02MmVhNGU5ODVlYTgiLCJBbGwgRmlybSBVc2VycyIsImJhNjU2MjMxLTExY2YtNGYyNy1iOTg3LTQzM2Y1ZmE4ZmI2YyJdfQ.e_iIvax3EggbFAZUoN3zToqWqYD3AtKsHOgjyMCrtBsOV6AauzTjKUhF3mk12Dx748ZHfOmYRc6C2r5QY7VXs8mffIQGMo8q3LJG8qtUcy3GSITG5Qcb0ltT9FXk3Sps4JrijG6xb9dvCKOlJCKLUh93KTHCaj01zz7nYZNPZKquAuFx9Vy4w1Zksr0KuwOJ12WC7ffhI1Zt5kpDeWIPwCwcGPZgSXMPOCLZTvSjtLvctNq6F5UvyZVZT9vFsqlBobwE4NuTgsdNPyI9THoiAJj20DVuz3V5LPnEwEos-cVGW_0GtDEcfG5id23pT19JdfPlOAI3SjJlZeMUBapKYw"
+
+COPY . .
+
+RUN uv pip install --system --no-cache-dir -r service/requirements.txt
+
+WORKDIR /project/service
+
+EXPOSE 8010
+
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8010", "--reload"]

@@ -32,6 +32,20 @@ services:
     volumes:
       - ollama_data:/root/.ollama
 
+  chatbot:
+    image: shopping_assistant_chatbot:latest
+    ports:
+      - "8010:8010"
+    environment:
+      OPENAI_BASE_URL: xxx
+      OPENAI_API_KEY: xxx
+      WEAVIATE_HTTP_HOST: weaviate
+      WEAVIATE_HTTP_PORT: 8080
+      WEAVIATE_HTTP_SECURE: false
+      WEAVIATE_GRPC_HOST: weaviate
+      WEAVIATE_GRPC_PORT: 50051
+      WEAVIATE_GRPC_SECURE: false
+
 
 volumes:
   weaviate_data:
