@@ -5,7 +5,7 @@ __all__ = ("Cart", "CartItem")
 
 class Cart(Base):
 
-    __tablename__ = "Cart"
+    __tablename__ = "cart"
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, nullable=False)
     amount = Column(Float, nullable=False)
@@ -15,7 +15,7 @@ class Cart(Base):
 
 class CartItem(Base):
 
-    __tablename__ = "CartItem"
+    __tablename__ = "cart_item"
 
     id = Column(Integer, primary_key=True)
     cart_id = Column(Integer, nullable=False)
