@@ -3,6 +3,8 @@ from fastapi import Depends, Header
 from sqlalchemy.orm import Session
 from domains.users.models import UserDB
 from core.exceptions import UnauthorizedException, ResourceNotFoundException
+from domains.users.repository import SQLAlchemyUserRepository
+from domains.users.service import UserService
 
 
 # TODO: Make it depend on UserService
@@ -23,4 +25,11 @@ def get_current_user(db: Session = Depends(get_db), user_id: int | None = Header
         raise ResourceNotFoundException(message="User not found")
 
     return user
+
+
+def get_sqlalchemy_user_repo(db: Session = Depends(get_db)) -> SQLAlchemyUserRepository:
+    return SQLAlchemyUserRepository(db)
+
     
+def get_user_service(repo: SQLAlchemyUserRepository = Depends(get_sqlalchemy_user_repo)) -> UserService:
+    return UserService(repo)
