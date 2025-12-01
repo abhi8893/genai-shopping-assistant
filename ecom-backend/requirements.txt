@@ -3,3 +3,4 @@ alembic
 fastapi
 pydantic
 pydantic-settings
+uvicorn
