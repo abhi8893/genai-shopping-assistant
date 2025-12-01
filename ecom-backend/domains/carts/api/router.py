@@ -3,9 +3,7 @@ from domains.carts.schemas import (
     CartData, CartCreate, CartUpdate
 )
 from domains.carts.service import CartService
-from domains.products.service import ProductService
 from domains.carts.api.dependencies import get_cart_service
-from domains.products.api.dependencies import get_product_service
 from domains.users.api.dependencies import get_current_user
 from domains.users.models import UserDB
 
