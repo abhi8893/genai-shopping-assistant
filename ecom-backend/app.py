@@ -1,12 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from domains.carts.api.router import router as carts_router
-from api.exception_handlers import register_exception_handlers
+from api.v1.exception_handlers import register_exception_handlers
+from api.v1.router import api_v1_router
 
 app = FastAPI(
     title="E-commerce API",
-    description="API for the E-commerce",
-    version="0.1.0"
+    description="API for the E-commerce"
 )
 
 register_exception_handlers(app)
@@ -21,11 +20,7 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(carts_router)
-
-@app.get("/")
-async def root():
-    return {"message": "Welcome to the E-commerce API"}
+app.include_router(api_v1_router)
 
 if __name__ == "__main__":
     import uvicorn

@@ -1,4 +1,4 @@
-from api.dependencies import get_db
+from core.database import get_db
 from fastapi import Depends, Header
 from sqlalchemy.orm import Session
 from domains.users.models import UserDB

@@ -1,4 +1,4 @@
-from api.dependencies import get_db
+from core.database import get_db
 from fastapi import Depends
 from domains.products.repository import SQLAlchemyProductRepository
 from domains.products.service import ProductService
