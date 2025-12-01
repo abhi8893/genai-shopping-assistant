@@ -175,3 +175,23 @@ Ref: product.id < cart_item.product_id [delete: cascade]
 `http://localhost:8000/api/v1/docs`
 
 ![Swagger UI API v1](docs/images/swagger_ui_api_v1.png)
+
+
+## 3 Tier Architecture Example
+
+**NOTE**: I haven't implemented the cart api exactly as below. I realised later that it would have been better to have 1 cart vs multiple carts per user! (TODO: Simplify - for LLM's sake)
+
+| Layer                | Action           | Example                                    |
+| -------------------- | ---------------- | ------------------------------------------ |
+| **Client**           | Send Request     | GET /api/v1/carts/viewCart with Bearer JWT |
+|                      | Receive Response | SuccessResponse[CartData] or 404           |
+| **API Layer**        | Invokes          | `CartService.get_cart(user_id)`            |
+|                      | Returns          | `CartData`                                 |
+| **Service Layer**    | Calls            | `CartRepository.get_cart(user_id)`         |
+|                      | Returns          | `CartData`                                 |
+| **Repository Layer** | ORM Query        | `db.query(CartDB).filter(...).first()`     |
+|                      | Returns          | `CartDB`                                   |
+| **ORM Layer**        | SQL Translation  | SELECT ... FROM carts WHERE user_id = ?    |
+
+
+![alt text](docs/images/3_tier_architecture.png)
