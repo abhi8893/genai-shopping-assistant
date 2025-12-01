@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from domains.carts.models import CartDB, CartItemDB
-from exceptions import ResourceNotFoundException
+from core.exceptions import ResourceNotFoundException
 from abc import ABC, abstractmethod
 
 

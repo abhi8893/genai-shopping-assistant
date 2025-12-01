@@ -2,7 +2,7 @@ from domains.carts.schemas import CartCreate, CartData, CartUpdate
 from domains.carts.repository import CartRepository
 from domains.products.service import ProductService
 from domains.carts.models import CartItemDB, CartDB
-from exceptions import ResourceNotFoundException
+from core.exceptions import ResourceNotFoundException
 from typing import Literal
 
 class CartService:

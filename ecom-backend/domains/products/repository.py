@@ -1,7 +1,7 @@
 from domains.products.models import ProductDB
 from sqlalchemy.orm import Session
 from abc import ABC, abstractmethod
-from exceptions import ResourceNotFoundException
+from core.exceptions import ResourceNotFoundException
 
 class ProductRepository(ABC):
 
