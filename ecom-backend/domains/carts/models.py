@@ -1,25 +1,24 @@
 from core.database import Base
 from sqlalchemy import Column, Integer, Float, ForeignKey
 from sqlalchemy.sql.sqltypes import TIMESTAMP
-from sqlalchemy.sql.expression import text
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func as sql_func
 
-__all__ = ("Cart", "CartItem")
+__all__ = ("CartDB", "CartItemDB")
 
-class Cart(Base):
+class CartDB(Base):
 
     __tablename__ = "cart"
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("user.id", ondelete="CASCADE"), nullable=False)
     amount = Column(Float, nullable=False)
-    created_at = Column(TIMESTAMP(timezone=True), server_default=text("NOW()"), nullable=False)
+    created_at = Column(TIMESTAMP(timezone=True), default=sql_func.now(), nullable=False)
 
-    cart_items = relationship("CartItem", back_populates="cart")
-    user = relationship("User", back_populates="carts")
+    cart_items = relationship("CartItemDB", back_populates="cart")
+    user = relationship("UserDB", back_populates="carts")
 
 
-
-class CartItem(Base):
+class CartItemDB(Base):
 
     __tablename__ = "cart_item"
 
@@ -29,7 +28,7 @@ class CartItem(Base):
     quantity = Column(Float, nullable=False)
     amount = Column(Float, nullable=False)
 
-    cart = relationship("Cart", back_populates="cart_items")
+    cart = relationship("CartDB", back_populates="cart_items")
 
 
     
