@@ -194,4 +194,5 @@ Ref: product.id < cart_item.product_id [delete: cascade]
 | **ORM Layer**        | SQL Translation  | SELECT ... FROM carts WHERE user_id = ?    |
 
 
-![alt text](docs/images/3_tier_architecture.png)
+
+![alt text](docs/diagrams/3_tier_arch.png)
