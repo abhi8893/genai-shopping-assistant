@@ -10,7 +10,7 @@ router = APIRouter(tags=["products"], prefix="/products")
 def get_all_products(
     service: ProductService = Depends(get_product_service),
     page: int = Query(1, ge=1, description="Page number"),
-    limit: int = Query(1, ge=1, description="Limit"),
+    limit: int = Query(10, ge=1, description="Limit"),
 ):
     return service.get_all(page, limit)
 
@@ -18,7 +18,7 @@ def get_all_products(
 @router.get("/search", response_model=list[ProductData])
 def search(
     page: int = Query(1, ge=1),
-    limit: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1),
     category_id: int = Query(None),
     subcategory_id: int = Query(None),
     keywords: list[str] = Query(None),

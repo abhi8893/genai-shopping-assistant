@@ -5,111 +5,173 @@
 
 ```
 .
-├── core/
+├── alembic.ini
+├── api
+│   ├── __init__.py
+│   └── v1
+│       ├── __init__.py
+│       ├── dependencies.py
+│       ├── exception_handlers.py
+│       ├── router.py
+│       └── schemas.py
+├── app.py
+├── core
+│   ├── __init__.py
 │   ├── config.py
 │   ├── database.py
+│   ├── exceptions.py
 │   ├── logging.py
 │   └── security.py
-│
-├── domains/
-│   ├── users/
-│   │   ├── models/
-│   │   │   └── user.py
-│   │   ├── repository.py
-│   │   ├── service.py
-│   │   ├── api/
-│   │   │   └── router.py
-│   │   ├── migrations/
-│   │   │   ├── env.py
-│   │   │   ├── alembic.ini
-│   │   │   └── versions/
-│   │   └── __init__.py
-│   │
-│   ├── products/
-│   │   ├── models/
-│   │   ├── repository.py
-│   │   ├── service.py
-│   │   ├── api/
-│   │   ├── migrations/
-│   │   │   ├── env.py
-│   │   │   ├── alembic.ini
-│   │   │   └── versions/
-│   │   └── __init__.py
-│   │
-│   ├── cart/
-│   │   ├── models/
-│   │   ├── repository.py
-│   │   ├── service.py
-│   │   ├── api/
-│   │   ├── migrations/
-│   │   └── __init__.py
-│   │
-│   └── auth/
-│       ├── models/
-│       ├── repository.py
-│       ├── service.py
-│       ├── api/
-│       ├── migrations/
-│       └── __init__.py
-│
-├── api/
-│   ├── router.py       # central API gateway
-│   └── dependencies.py
-│
-├── scripts/
-│   └── run_all_migrations.py
-│
-├── app.py               # FastAPI entrypoint
-│
-├── requirements.txt
-├── Dockerfile
 ├── docker-compose.yml
-└── README.md
+├── Dockerfile
+├── docs
+│   └── diagrams
+│       └── db_diagram.png
+├── domains
+│   ├── __init__.py
+│   ├── accounts
+│   │   ├── __init__.py
+│   │   └── models.py
+│   ├── carts
+│   │   ├── __init__.py
+│   │   ├── api
+│   │   │   ├── __init__.py
+│   │   │   ├── dependencies.py
+│   │   │   └── router.py
+│   │   ├── models.py
+│   │   ├── repository.py
+│   │   ├── schemas.py
+│   │   └── service.py
+│   ├── products
+│   │   ├── __init__.py
+│   │   ├── api
+│   │   │   ├── __init__.py
+│   │   │   ├── dependencies.py
+│   │   │   └── router.py
+│   │   ├── models.py
+│   │   ├── repository.py
+│   │   ├── schemas.py
+│   │   └── service.py
+│   └── users
+│       ├── __init__.py
+│       ├── api
+│       │   ├── __init__.py
+│       │   ├── dependencies.py
+│       │   └── router.py
+│       ├── models.py
+│       ├── repository.py
+│       ├── schemas.py
+│       └── service.py
+├── ecom_backend.db
+├── migrations
+│   ├── env.py
+│   ├── README
+│   ├── script.py.mako
+│   └── versions
+│       └── 8a3fde54fa59_add_tables.py
+├── README.md
+├── requirements.txt
+└── scripts
+    ├── add_dummy_data.sql
+    └── run_all_migrations.py
 
 ```
 
 ## Database Schema
 
 ```dbml
-Table User {
-  id integer [primary key]
-  username varchar
-  first_name varchar
-  last_name varchar
-  role varchar
-  created_at timestamp
+Table alembic_version {
+  version_num varchar(32) [pk]
 }
 
-
-Table Product {
-  id integer [primary key]
-  category_id integer [ref: > ProductHierarchy.category_id]
-  subcategory_id integer [ref: > ProductHierarchy.subcategory_id]
-  name varchar
-  description varchar
-  price float
-}
-
-Table ProductHierarchy {
-  category_id integer
-  subcategory_id integer
+Table product_hierarchy {
+  id integer
+  category_id integer [pk]
+  subcategory_id integer [pk]
   category_name varchar
   subcategory_name varchar
 }
 
-Table Cart {
-  id integer [primary key]
-  user_id integer [ref: > User.id]
-  amount float
-  created_at timestamp
+Table user {
+  id integer [pk]
+  first_name varchar
+  last_name varchar
+  role varchar(5) [default: 'user']
+  created_at timestamp [default: `NOW()`]
 }
 
-Table CartItem {
-  cart_id integer [ref: > Cart.id]
-  product_id integer [ref: > Product.id]
-  quantity integer
+Table cart {
+  id integer [pk]
+  user_id integer
+  amount float
+  created_at timestamp [default: `NOW()`]
+}
+
+Table product {
+  id integer [pk]
+  category_id integer
+  subcategory_id integer
+  name varchar
+  description varchar
+  price float
+  created_at timestamp [default: `NOW()`]
+}
+
+Table cart_item {
+  id integer [pk]
+  cart_id integer
+  product_id integer
+  quantity float
   amount float
 }
+
+// Relationships
+Ref: user.id < cart.user_id [delete: cascade]
+Ref: product_hierarchy.(category_id, subcategory_id) > product.(category_id, subcategory_id) [delete: cascade]
+Ref: cart.id < cart_item.cart_id [delete: cascade]
+Ref: product.id < cart_item.product_id [delete: cascade]
 ```
 
 ![DB Schema](docs/diagrams/db_diagram.png)
+
+
+## Routes
+
+| Route | Description |
+| --- | --- |
+| `GET /carts` | Get all carts |
+| `GET /carts/{cart_id}` | Get a cart by ID |
+| `GET /carts/{cart_id}/items` | Get all items in a cart by ID |
+| `POST /carts` | Create a new cart |
+| `PUT /carts/{cart_id}` | Update a cart by ID |
+| `DELETE /carts/{cart_id}` | Delete a cart by ID |
+
+| Route | Description |
+| --- | --- |
+| `GET /products` | Get all products |
+| `GET /products/{product_id}` | Get a product by ID |
+| `POST /products` | Create a new product |
+| `PUT /products/{product_id}` | Update a product by ID |
+| `DELETE /products/{product_id}` | Delete a product by ID |
+
+| Route | Description |
+| --- | --- |
+| `GET /users` | Get all users |
+| `GET /users/{user_id}` | Get a user by ID |
+| `POST /users` | Create a new user |
+| `PUT /users/{user_id}` | Update a user by ID |
+| `DELETE /users/{user_id}` | Delete a user by ID |
+
+---
+
+## Spin up server
+
+```bash
+ python app.py
+```
+
+## Swagger UI
+
+`http://localhost:8000/api/v1/docs`
+
+![Swagger UI API v1](docs/images/swagger_ui_api_v1.png)
