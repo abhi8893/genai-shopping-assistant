@@ -42,6 +42,8 @@ class ProductHierarchyDB(Base):
     subcategory_id = Column(Integer)
     category_name = Column(String, nullable=False)
     subcategory_name = Column(String, nullable=False)
+    category_slug = Column(String, nullable=False)
+    subcategory_slug = Column(String, nullable=False)
 
     # Add composite primary key
     __table_args__ = (
