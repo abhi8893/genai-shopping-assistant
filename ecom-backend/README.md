@@ -161,11 +161,14 @@ python scripts/ingest_product_data.py --reset-db \
 
 | Route | Description |
 | --- | --- |
-| `GET /products` | Get all products |
-| `GET /products/{product_id}` | Get a product by ID |
-| `POST /products` | Create a new product |
-| `PUT /products/{product_id}` | Update a product by ID |
-| `DELETE /products/{product_id}` | Delete a product by ID |
+| `GET /products` | Get all products with pagination (page, limit) |
+| `GET /products/search` | Search products with filters (category_id, subcategory_id, product_id, category_slug, subcategory_slug, product_slug, keywords) |
+| `GET /products/id/{product_id}` | Get a product by ID |
+| `GET /products/slug/{product_slug}` | Get a product by slug |
+| `GET /products/category/id/{category_id}` | Get products by category ID |
+| `GET /products/subcategory/id/{subcategory_id}` | Get products by subcategory ID |
+| `GET /products/category/slug/{category_slug}` | Get products by category slug |
+| `GET /products/subcategory/slug/{subcategory_slug}` | Get products by subcategory slug |
 
 | Route | Description |
 | --- | --- |

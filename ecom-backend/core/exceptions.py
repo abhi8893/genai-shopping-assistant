@@ -17,3 +17,8 @@ class ResourceNotFoundException(BaseAppException):
 class UnauthorizedException(BaseAppException):
     def __init__(self, message: str):
         super().__init__(message, status.HTTP_401_UNAUTHORIZED)
+
+class ValidationException(BaseAppException):
+
+    def __init__(self, message: str):
+        super().__init__(message, status.HTTP_422_UNPROCESSABLE_ENTITY)
