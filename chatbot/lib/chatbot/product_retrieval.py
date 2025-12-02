@@ -54,12 +54,12 @@ def retrieve_products(
 
     if categories:
         filters.append(
-            wvc.query.Filter.by_property("category").contains_any(categories)
+            wvc.query.Filter.by_property("category_slug").contains_any(categories)
         )
 
     if subcategories:
         filters.append(
-            wvc.query.Filter.by_property("subcategory").contains_any(subcategories)
+            wvc.query.Filter.by_property("subcategory_slug").contains_any(subcategories)
         )
 
     if min_price:

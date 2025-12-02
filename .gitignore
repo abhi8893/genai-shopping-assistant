@@ -107,3 +107,6 @@ data/*
 
 # keep .python-version
 !.python-version
+
+# chatbot
+!chatbot
