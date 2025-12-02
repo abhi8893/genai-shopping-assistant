@@ -74,6 +74,7 @@
 └── scripts
     ├── add_dummy_data.sql
     └── run_all_migrations.py
+    └── ingest_product_data.py
 
 ```
 
@@ -88,6 +89,8 @@ Table product_hierarchy {
   id integer
   category_id integer [pk]
   subcategory_id integer [pk]
+  category_slug varchar
+  subcategory_slug varchar
   category_name varchar
   subcategory_name varchar
 }
@@ -112,6 +115,7 @@ Table product {
   category_id integer
   subcategory_id integer
   name varchar
+  slug varchar
   description varchar
   price float
   created_at timestamp [default: `NOW()`]
@@ -134,6 +138,15 @@ Ref: product.id < cart_item.product_id [delete: cascade]
 
 ![DB Schema](docs/diagrams/db_diagram.png)
 
+
+## Ingest Product Data
+
+```bash
+python scripts/ingest_product_data.py --reset-db \
+--db-url sqlite:///ecom_test.db \
+--data-file products_extended.csv \
+--data-dir "data" \
+```
 
 ## Routes
 
@@ -196,3 +209,4 @@ Ref: product.id < cart_item.product_id [delete: cascade]
 
 
 ![alt text](docs/diagrams/3_tier_arch.png)
+
