@@ -1,20 +1,24 @@
-from domains.products.repository import SQLAlchemyProductRepository
+from domains.products.repository import ProductRepository
 from domains.products.schemas import ProductData, ProductCreate, ProductUpdate
 from domains.products.models import ProductDB
+from domains.products.types import ProductHierarchyFilter
 
 class ProductService:
 
-    def __init__(self, repo: SQLAlchemyProductRepository):
+    def __init__(self, repo: ProductRepository):
         self.repo = repo
 
     def get(self, product_id: int) -> ProductData:
         return ProductData.model_validate(self.repo.get(product_id))
 
+    def get_by_hierarchy(self, hierarchy_filter: ProductHierarchyFilter, page: int, limit: int) -> list[ProductData]:
+        return [ProductData.model_validate(product_db) for product_db in self.repo.get_by_hierarchy(hierarchy_filter, page=page, limit=limit)]
+
     def get_all(self, page: int, limit: int) -> list[ProductData]:
         return [ProductData.model_validate(product_db) for product_db in self.repo.get_all(page, limit)]
 
-    def search(self, page: int, limit: int, category_id: int | None = None, subcategory_id: int | None = None, keywords: list[str] | None = None) -> list[ProductData]:
-        return [ProductData.model_validate(product_db) for product_db in self.repo.search(page, limit, category_id=category_id, subcategory_id=subcategory_id, keywords=keywords)]
+    def search(self, page: int, limit: int, hierarchy_filter: ProductHierarchyFilter | None = None, keywords: list[str] | None = None) -> list[ProductData]:
+        return [ProductData.model_validate(product_db) for product_db in self.repo.search(page, limit, hierarchy_filter=hierarchy_filter, keywords=keywords)]
 
     def create(self, product_create_data: ProductCreate)-> ProductData:
         product_db = ProductDB(**product_create_data.model_dump())

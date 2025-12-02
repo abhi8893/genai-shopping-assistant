@@ -1,14 +1,10 @@
-from domains.products.models import ProductDB
+from domains.products.models import ProductDB, ProductHierarchyDB
 from sqlalchemy.orm import Session
 from abc import ABC, abstractmethod
 from core.exceptions import ResourceNotFoundException
 import sqlalchemy
 from sqlalchemy import func as sql_func
-
-
-class ProductHierarchyFilter:
-    category_id: int
-    subcategory_id: int
+from domains.products.types import ProductHierarchyFilter
 
 class ProductRepository(ABC):
 
@@ -31,9 +27,17 @@ class ProductRepository(ABC):
     @abstractmethod
     def delete(self, product_id: int) -> None:
         pass
+
+    @abstractmethod
+    def get_by_hierarchy(self, hierarchy_filter: ProductHierarchyFilter) -> list[ProductDB]:
+        pass
     
     @abstractmethod
-    def search(self, page: int, limit: int, category_id: int | None = None, subcategory_id: int | None = None, keywords: list[str] = None) -> list[ProductDB]:
+    def search(
+        self, page: int, limit: int, 
+        hierarchy_filter: ProductHierarchyFilter,
+        keywords: list[str] | None = None
+    ) -> list[ProductDB]:
         pass
 
 class SQLAlchemyProductRepository(ProductRepository):
@@ -56,17 +60,30 @@ class SQLAlchemyProductRepository(ProductRepository):
             raise ResourceNotFoundException("No products found")
         return products
 
-    def _get_hierarchy_filter(self, category_id: int | None = None, subcategory_id: int | None = None) -> sqlalchemy.sql.expression.BinaryExpression:
-        hierarchy_filters = []
-        if category_id is not None:
-            hierarchy_filters.append(ProductDB.product_hierarchy.category_id == category_id)
-        if subcategory_id is not None:
-            hierarchy_filters.append(ProductDB.product_hierarchy.subcategory_id == subcategory_id)
+    def _get_hierarchy_sql_filter(self, hierarchy_filter: ProductHierarchyFilter) -> sqlalchemy.sql.expression.BinaryExpression:
 
-        if hierarchy_filters:
-            hierarchy_filter = sqlalchemy.and_(*hierarchy_filters)
-        else:
-            hierarchy_filter = sqlalchemy.true()
+        prod_table_fields = {
+            "category_id": "category_id",
+            "subcategory_id": "subcategory_id",
+            "product_id": "id",
+            "product_slug": "slug"
+        }
+        hier_table_fields = {
+            "category_slug": "category_slug",
+            "subcategory_slug": "subcategory_slug",
+        }
+        hierarchy_filters = []
+
+        for filter_name, filter_value in hierarchy_filter.model_dump(exclude_unset=True).items():
+            if filter_value is not None:
+                if filter_name in prod_table_fields:
+                    f = getattr(ProductDB, prod_table_fields[filter_name])
+                    hierarchy_filters.append(f == filter_value)
+                elif filter_name in hier_table_fields:
+                    kwargs = {hier_table_fields[filter_name]: filter_value}
+                    hierarchy_filters.append(ProductDB.product_hierarchy.has(**kwargs))
+
+        hierarchy_filter = sqlalchemy.and_(*hierarchy_filters)
         return hierarchy_filter
 
     def _get_keyword_filter(self, keywords: list[str] = None) -> sqlalchemy.sql.expression.BinaryExpression:
@@ -81,10 +98,26 @@ class SQLAlchemyProductRepository(ProductRepository):
 
         return keyword_filter
 
-    def search(self, page: int, limit: int, category_id: int | None = None, subcategory_id: int | None = None, keywords: list[str] = None) -> list[ProductDB]:
+    def get_by_hierarchy(self, hierarchy_filter: ProductHierarchyFilter, page: int, limit: int) -> list[ProductDB]:
+        hierarchy_filter = self._get_hierarchy_sql_filter(hierarchy_filter)
+        products = self.db.query(ProductDB).filter(hierarchy_filter).offset((page - 1) * limit).limit(limit).all()
+
+        if not products:
+            raise ResourceNotFoundException("No products found matching the criteria")
+
+        return products
+
+    def search(
+        self, page: int, limit: int, 
+        hierarchy_filter: ProductHierarchyFilter | None = None, 
+        keywords: list[str] = None
+    ) -> list[ProductDB]:
 
         # Build hierarchy filters
-        hierarchy_filter = self._get_hierarchy_filter(category_id, subcategory_id)
+        if hierarchy_filter is not None:
+            hierarchy_filter = self._get_hierarchy_sql_filter(hierarchy_filter)
+        else:
+            hierarchy_filter = sqlalchemy.true()
 
         # Build keyword filters
         keyword_filter = self._get_keyword_filter(keywords)
