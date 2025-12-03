@@ -69,6 +69,10 @@ class CartService:
         saved_cart = self.repo.create(cart_db, user_id)
         return CartData.model_validate(saved_cart)
 
+    def empty_cart(self, cart_id: int) -> CartData:
+        self.repo.empty_cart(cart_id)
+        return self.get(cart_id)
+
     def update(self, cart_update_data: CartUpdate, cart_id: int) -> CartData:
         self.empty_cart(cart_id)
         cart_db = self.repo.get(cart_id)
@@ -80,8 +84,10 @@ class CartService:
 
         return CartData.model_validate(updated_cart)
 
-    def delete(self, cart_id: int) -> None:
+    def delete(self, cart_id: int) -> CartData:
+        cart = self.get(cart_id)
         self.repo.delete(cart_id)
+        return cart
         
 
 

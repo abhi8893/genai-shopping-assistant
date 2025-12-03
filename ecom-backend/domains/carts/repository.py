@@ -60,6 +60,10 @@ class SQLAlchemyCartRepository(CartRepository):
     def delete(self, cart_id: int) -> None:
         self.db.query(CartDB).filter(CartDB.id == cart_id).delete()
         self.db.commit()
+
+    def empty_cart(self, cart_id: int) -> None:
+        self.db.query(CartItemDB).filter(CartItemDB.cart_id == cart_id).delete()
+        self.db.commit()
     
 
     
