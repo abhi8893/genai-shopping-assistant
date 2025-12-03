@@ -35,12 +35,12 @@ def create_cart(
     return cart_service.create(cart, user.id)
     
 
-@router.delete("/{cart_id}", status_code=status.HTTP_200_OK, dependencies=[Depends(get_current_user)])
+@router.delete("/{cart_id}", response_model=CartData, status_code=status.HTTP_200_OK, dependencies=[Depends(get_current_user)])
 def delete_cart(
     cart_id: int,
     service: CartService = Depends(get_cart_service),
 ):
-    return service.delete_cart(cart_id)
+    return service.delete(cart_id)
 
 @router.put("/{cart_id}", response_model=CartData, status_code=status.HTTP_200_OK, dependencies=[Depends(get_current_user)])
 def update_cart(cart_id: int, cart: CartUpdate, service: CartService = Depends(get_cart_service)):
