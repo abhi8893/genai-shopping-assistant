@@ -3,8 +3,10 @@ from pydantic import BaseModel, model_validator
 
 # Input Schemas
 
+# TODO: Make slug creation server side logic (with optional override)
 class ProductCreate(BaseModel):
     name: str
+    slug: str
     description: str
     price: float
     category_id: int
@@ -15,6 +17,7 @@ class ProductCreate(BaseModel):
 
 class ProductUpdate(BaseModel):
     name: str | None = None
+    slug: str | None = None
     description: str | None = None
     price: float | None = None
     category_id: int | None = None
@@ -37,6 +40,7 @@ class ProductUpdate(BaseModel):
 class ProductData(BaseModel):
     id: int
     name: str
+    slug: str
     description: str
     price: float
     category_id: int
