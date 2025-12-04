@@ -1,13 +1,17 @@
 from pydantic import BaseModel
 
 
-class Product(BaseModel):
+class ProductVectorDBRecord(BaseModel):
     product_id: int
     name: str
+    slug: str
     description: str
-    category: str
-    subcategory: str
+    category_name: str
+    subcategory_name: str
+    category_slug: str
+    subcategory_slug: str
     price: float
+    created_at: str
 
 
 class CartItem(BaseModel):
