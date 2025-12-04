@@ -2,15 +2,15 @@
 from weaviate import WeaviateClient
 from chatbot.graph.types import State
 from chatbot.product_retrieval import retrieve_products
-from chatbot.types import Product
+from chatbot.types import ProductVectorDBRecord
 from pydantic import BaseModel, Field
 import openai
 
 
-def get_product_list_prompt_str(products: list[Product]) -> str:
+def get_product_list_prompt_str(products: list[ProductVectorDBRecord]) -> str:
     prod_desc_lst = []
     for idx, prod in enumerate(products):
-        prod_desc = f"{idx + 1}. {prod.name} (${prod.price})"
+        prod_desc = f"{idx + 1}. {prod.slug} (${prod.price})"
         prod_desc_lst.append(prod_desc)
 
     return '\n'.join(prod_desc_lst)
@@ -85,7 +85,7 @@ class ProductSearchAgent:
             weaviate_client=self.weaviate_client
         )
 
-        products_retrieved = [Product(**p.properties) for p in product_retrieval_response.objects]
+        products_retrieved = [ProductVectorDBRecord(**p.properties) for p in product_retrieval_response.objects]
 
         if not product_retrieval_response.objects:
             asst_response = "I found no products based on your query. Can you please rephrase your query?"

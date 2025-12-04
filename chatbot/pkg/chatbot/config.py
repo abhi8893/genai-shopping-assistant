@@ -11,6 +11,7 @@ DOWNSTREAM_ROUTES = [
 ]
 
 def load_config(fpath: str = CONFIG_FILE_PATH):
+    fpath = Path(fpath).expanduser()
     with open(fpath, "r") as f:
         conf = yaml.safe_load(f)
 
