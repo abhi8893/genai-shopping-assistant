@@ -9,7 +9,7 @@ from chatbot.external.ecom_api_client.exceptions import ApiError, ExceptionRespo
 class CartsAPIClient:
 
 
-    def __init__(self, base_url: str, credentials: Credentials):
+    def __init__(self, base_url: str, credentials: Credentials = None):
         self.base_url = base_url
         self.http = HttpClient(base_url=base_url, prefix="/carts", credentials=credentials)
 

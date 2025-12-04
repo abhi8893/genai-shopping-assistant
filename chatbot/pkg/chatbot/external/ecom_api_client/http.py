@@ -8,14 +8,14 @@ class HttpClient:
     def __init__(self, base_url: str, credentials: Credentials | None = None, prefix=""):
         self.base_url = base_url + prefix
         self.session = requests.Session()
-        self.credentials = credentials
+        self.credentials = credentials if credentials is not None else Credentials(user_id=None)
 
 
     def request(self, method, path, raise_error=False, **kwargs) -> dict | ExceptionResponse:
 
         # TODO: Temp measure before I implement better auth in API
         headers = kwargs.pop("headers", {})
-        if self.credentials:
+        if self.credentials.user_id:
             headers["X-User-Id"] = str(self.credentials.user_id)
 
         response_obj = self.session.request(

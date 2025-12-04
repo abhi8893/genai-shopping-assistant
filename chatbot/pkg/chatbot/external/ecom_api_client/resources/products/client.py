@@ -5,7 +5,7 @@ from chatbot.external.ecom_api_client.exceptions import ApiError, ExceptionRespo
 
 class ProductsAPIClient:
 
-    def __init__(self, base_url: str, credentials: Credentials):
+    def __init__(self, base_url: str, credentials: Credentials = None):
         self.http = HttpClient(base_url=base_url, credentials=credentials, prefix="/products")
     
 
