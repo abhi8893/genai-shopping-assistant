@@ -1,6 +1,5 @@
 import argparse
 import logging
-
 import weaviate
 import weaviate.classes as wvc
 import os
@@ -109,8 +108,8 @@ with WeaviateConnectionManager(client=weaviate_client) as weaviate_client_connec
     products = weaviate_client_connected.collections.create(
         name=VECTOR_DB_COLLECTION_NAME,
         vector_config=wvc.config.Configure.Vectors.text2vec_ollama(
-            api_endpoint=OLLAMA_API_ENDPOINT,
-            model=EMBEDDING_MODEL,
+            api_endpoint=args.ollama_api_endpoint,
+            model=args.embedding_model,
             source_properties=EMBEDDING_FIELDS
         ),
         properties=[
