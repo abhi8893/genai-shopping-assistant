@@ -1,6 +1,5 @@
 from chatbot.external.ecom_api_client.client import EcomAPIClient
-from chatbot.external.ecom_api_client.resources.carts.types import CartItemData, CartUpdateBody, CartCreateBody, CartResponse
-from chatbot.external.ecom_api_client.resources.products.client import ProductsAPIClient
+from chatbot.external.ecom_api_client.resources.carts.types import CartItemData, CartUpdateBody, CartCreateBody
 import chatbot.types
 from collections import Counter
 # import functools
@@ -64,12 +63,13 @@ from collections import Counter
 
 # NOTE / TODO: Simplifying assumption of a single cart
 
-class CartInterface:
+class Cart:
 
     def __init__(self, api_client: EcomAPIClient):
         self.api_client = api_client
+        self._init_cart()
     
-    def init_cart(self):
+    def _init_cart(self):
         carts = self.api_client.carts.get_all_carts()
 
         if not carts:

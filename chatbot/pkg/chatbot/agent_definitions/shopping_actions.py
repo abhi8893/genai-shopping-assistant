@@ -1,46 +1,47 @@
-from collections import Counter
+# from collections import Counter
 from chatbot.graph.types import State
 from agents import Agent, Runner
 from agents import FunctionTool, function_tool
 from typing import Annotated
+from chatbot.tools.cart_actions import Cart
 
 # TODO: This should be moved somewhere else (This is NOT shopping actions specific functionality)
-class Cart:
-    def __init__(self, user_id: str):
-        self.user_id = user_id
-        self.items = Counter()
+# class Cart:
+#     def __init__(self, user_id: str):
+#         self.user_id = user_id
+#         self.items = Counter()
 
-    def add_item(self, item_id: str, quantity: int):
-        self.items[item_id] += quantity
-        return self
+#     def add_item(self, item_id: str, quantity: int):
+#         self.items[item_id] += quantity
+#         return self
 
-    def remove_item(self, item_id: str, quantity: int):
-        cur_qty = self.items.get(item_id, 0)
-        if cur_qty < quantity:
-            raise ValueError("Not enough quantity in cart")
-        if cur_qty == quantity:
-            return self.empty_item(item_id)
+#     def remove_item(self, item_id: str, quantity: int):
+#         cur_qty = self.items.get(item_id, 0)
+#         if cur_qty < quantity:
+#             raise ValueError("Not enough quantity in cart")
+#         if cur_qty == quantity:
+#             return self.empty_item(item_id)
     
-        self.items[item_id] -= quantity
-        return self
+#         self.items[item_id] -= quantity
+#         return self
 
-    def empty_cart(self):
-        self.items.clear()
-        return self
+#     def empty_cart(self):
+#         self.items.clear()
+#         return self
 
-    def empty_item(self, item_id: str):
-        cur_qty = self.items.get(item_id, 0)
-        if cur_qty == 0:
-            raise ValueError("Item not found in cart")
+#     def empty_item(self, item_id: str):
+#         cur_qty = self.items.get(item_id, 0)
+#         if cur_qty == 0:
+#             raise ValueError("Item not found in cart")
             
-        self.items.pop(item_id)
-        return self
+#         self.items.pop(item_id)
+#         return self
 
-    def view_cart(self):
-        return dict(self.items)
+#     def view_cart(self):
+#         return dict(self.items)
 
-    def __repr__(self) -> str:
-        return f'Cart({self.view_cart()})'
+#     def __repr__(self) -> str:
+#         return f'Cart({self.view_cart()})'
 
 
 class ShoppingActionsAgent:
@@ -76,21 +77,24 @@ class ShoppingActionsAgent:
 
         @function_tool
         def add_to_cart(
-            item_id: Annotated[str, "item_id"],
+            product_slug: Annotated[str, "product_slug"],
             quantity: Annotated[int, "quantity"] = 1
         ) -> dict:
-            """Add an item to user's cart"""
+            """Add a product to user's cart"""
             try:
-                self.cart.add_item(item_id, quantity)
+                self.cart.add_item(product_slug, quantity)
             except Exception as e:
                 return "Error updating cart: " + str(e)
             
             return f"Cart updated successfully. Current Cart: {self.cart.view_cart()}"
 
         @function_tool
-        def remove_from_cart(item_id: str, quantity: Annotated[int, "quantity"]) -> dict:
-            """Remove an item from user's cart. Returns the updated cart."""
-            self.cart.remove_item(item_id, quantity)
+        def remove_from_cart(
+            product_slug: Annotated[str, "product_slug"],
+            quantity: Annotated[int, "quantity"] = 1
+        ) -> dict:
+            """Remove a product from user's cart. Returns the updated cart."""
+            self.cart.remove_item(product_slug, quantity)
             return f"Cart updated successfully. Current Cart: {self.cart.view_cart()}"
 
         @function_tool
@@ -105,9 +109,11 @@ class ShoppingActionsAgent:
             return f"Cart updated successfully. Current Cart: {self.cart.view_cart()}"
 
         @function_tool
-        def empty_item(item_id: str) -> str:
+        def empty_item_from_cart(
+            product_slug: Annotated[str, "product_slug"]
+        ) -> str:
             """Empty a specific item from user's cart"""
-            self.cart.empty_item(item_id)
+            self.cart.empty_item(product_slug)
             return f"Cart updated successfully. Current Cart: {self.cart.view_cart()}"
 
         return [
@@ -115,7 +121,7 @@ class ShoppingActionsAgent:
             remove_from_cart,
             view_cart,
             empty_cart,
-            empty_item,
+            empty_item_from_cart,
         ]
 
     def _define_agent_actions(self, tool_store: dict[str, list[FunctionTool]]) -> dict:

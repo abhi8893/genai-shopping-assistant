@@ -2,7 +2,9 @@ import openai
 from weaviate import WeaviateClient
 from chatbot.graph.types import State
 from chatbot.agent_definitions import RouterAgent, ShoppingActionsAgent, CustomerServiceAgent, ProductSearchAgent
-from chatbot.agent_definitions.shopping_actions import Cart
+from chatbot.tools.cart_actions import Cart
+from chatbot.external.ecom_api_client.client import EcomAPIClient
+from chatbot.external.ecom_api_client.credentials import Credentials as EcomAPICredentials
 from langgraph.checkpoint.memory import InMemorySaver
 from chatbot.graph.graph import build_graph
 from langchain_core.runnables import RunnableConfig
@@ -14,13 +16,13 @@ class Chat:
 
     def __init__(
         self, 
-        user_id: str, 
         config: dict,
+        ecom_api_client: EcomAPIClient = None,
         openai_client: openai.OpenAI = None,
         weaviate_client: WeaviateClient = None,
     ):
-        self.user_id = user_id
         self.config = config
+        self.ecom_api_client = ecom_api_client if ecom_api_client is not None else EcomAPIClient(base_url="http://localhost:8000/api/v1")
         self.openai_client = openai.OpenAI() if openai_client is None else openai_client
         self.weaviate_client = weaviate_client
         
@@ -78,7 +80,7 @@ class Chat:
         return gr.ChatInterface(fn=chat, title="Shopping Assistant", ).launch()        
 
     def _fetch_cart(self) -> Cart:
-        return Cart(user_id=self.user_id)
+        return Cart(api_client=self.ecom_api_client)
 
     def _initialize_agents(self, cart: Cart) -> dict:
         agents = {}
@@ -111,12 +113,15 @@ if __name__ == "__main__":
     from chatbot.env import load_env
     from agents import set_tracing_disabled
     set_tracing_disabled(True)
-    load_env("/Users/Abhishek_Bhatia-GUVA/personal/projects/ecom-shopping-assistant/genai-shopping-assistant/.env")
-    workflow_config = load_config()
+    load_env("~/personal/projects/ecom-shopping-assistant/genai-shopping-assistant/.env")
+    workflow_config = load_config("~/personal/projects/ecom-shopping-assistant/genai-shopping-assistant/chatbot/conf/config.yml")
 
-    chat = Chat(user_id="1", config=workflow_config)
-    # asyncio.run(chat.cli_chat())
-    chat.web_ui_chat()
+    chat = Chat(
+        ecom_api_client=EcomAPIClient(base_url="http://localhost:8000/api/v1", credentials=EcomAPICredentials(user_id=1)),
+        config=workflow_config
+    )
+    asyncio.run(chat.cli_chat())
+    # chat.web_ui_chat()
     
         
         
