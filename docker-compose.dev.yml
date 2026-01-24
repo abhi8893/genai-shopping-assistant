@@ -1,0 +1,9 @@
+services:
+  chatbot:
+    build:
+      target: dev
+    image: shopping_assistant_chatbot:dev
+    volumes:
+      - ./chatbot:/project
+    ports:
+      - "8011:8010"
