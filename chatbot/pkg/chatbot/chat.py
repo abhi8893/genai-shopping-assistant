@@ -32,8 +32,6 @@ class Chat:
         self.graph = self._build_graph(agents=self.agents, memory=self.memory)
         self.set_thread("1")
     
-    def _inner_thread_id(self):
-        return f'{self.user_id}_{self.thread_id}'
 
     def set_thread(self, thread_id: str):
         self.thread_id = thread_id
