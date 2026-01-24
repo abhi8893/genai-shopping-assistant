@@ -1,1 +1,1 @@
-chatbot @ file://pkg/
+-e file://pkg/

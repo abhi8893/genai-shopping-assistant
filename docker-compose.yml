@@ -33,7 +33,11 @@ services:
       - ollama_data:/root/.ollama
 
   chatbot:
-    image: shopping_assistant_chatbot:latest
+    build:
+      context: ./chatbot
+      dockerfile: Dockerfile
+      target: prod
+    image: shopping_assistant_chatbot:prod
     ports:
       - "8010:8010"
     environment:
