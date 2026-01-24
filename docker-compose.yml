@@ -53,6 +53,14 @@ services:
       # Accessing the ECOM API running on host machine from the chatbot container
       ECOM_API_BASE_URL: http://host.docker.internal:8000/api/v1
 
+  ecom-backend:
+    build:
+      context: ./ecom-backend
+      dockerfile: Dockerfile
+      target: prod
+    image: ecom-backend:prod
+    ports:
+      - "8000:8000"      
 
 volumes:
   weaviate_data:
