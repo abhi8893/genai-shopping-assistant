@@ -7,6 +7,9 @@ from chatbot.env import load_env
 import weaviate
 import os
 
+from chatbot.external.ecom_api_client.client import EcomAPIClient
+from chatbot.external.ecom_api_client.credentials import Credentials as EcomAPICredentials
+
 
 VERSION = "0.1.0"
 
@@ -28,9 +31,10 @@ CHATS = {}
 CONF_PATH = "../conf/config.yml"
 
 CONFIG = load_config(CONF_PATH)
+ECOM_API_BASE_URL = os.getenv("ECOM_API_BASE_URL", "http://localhost:8000/api/v1")
 
 
-def initialize_chat(user_id: str):
+def initialize_chat(user_id: str, thread_id: str):
     weaviate_connection_params = weaviate.connect.ConnectionParams(
         http={
             "host": os.getenv("WEAVIATE_HTTP_HOST"),
@@ -48,11 +52,23 @@ def initialize_chat(user_id: str):
         connection_params=weaviate_connection_params
     )
 
-    CHATS[user_id] = Chat(
-        user_id=user_id,
-        config=CONFIG,
-        weaviate_client=weaviate_client
+    chat_id = (user_id, thread_id)
+
+    ecom_api_client = EcomAPIClient(
+        base_url=ECOM_API_BASE_URL,
+        credentials=EcomAPICredentials(
+            user_id=user_id
+        )
     )
+
+    CHATS[chat_id] = Chat(
+        config=CONFIG,
+        weaviate_client=weaviate_client,
+        ecom_api_client=ecom_api_client
+    )
+    CHATS[chat_id].set_thread(thread_id)
+
+
 
 
 class Request(BaseModel):
@@ -62,12 +78,13 @@ class Request(BaseModel):
 
 @app.post("/chat")
 async def chat(request: Request):
-    chat = CHATS.get(request.user_id)
-    if not chat:
-        initialize_chat(request.user_id)
 
-    chat = CHATS[request.user_id]
-    chat.set_thread(request.thread_id)
+    chat_id = (request.user_id, request.thread_id)
+    chat = CHATS.get(chat_id)
+    if not chat:
+        initialize_chat(request.user_id, request.thread_id)
+
+    chat = CHATS[chat_id]
     
     response = await chat.query(request.query)
     return {"response": response}
