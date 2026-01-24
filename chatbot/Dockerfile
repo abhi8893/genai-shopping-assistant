@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.12-slim AS base
 
 WORKDIR /project
 
@@ -16,8 +16,19 @@ RUN sh /uv-installer.sh && rm /uv-installer.sh
 # Ensure the installed binary is on the `PATH`
 ENV PATH="/root/.local/bin/:$PATH"
 
-COPY . .
+# ------------------------
+# Dev target
+# ------------------------
 
+FROM base AS dev
+
+# Copy only dependency manifest
+COPY service/requirements.txt service/requirements.txt
+
+# Copy whole package (even though we will later volume mount it, we need to copy it for install to work)
+COPY pkg/ pkg/
+
+# Install dependencies (note that these remain cached unless requirements.txt or pyproject.toml change)
 RUN uv pip install --system --no-cache-dir -r service/requirements.txt
 
 WORKDIR /project/service
@@ -25,3 +36,18 @@ WORKDIR /project/service
 EXPOSE 8010
 
 CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8010", "--reload"]
+
+# ------------------------
+# Prod target
+# ------------------------
+
+FROM base AS prod
+COPY . /project
+
+# TODO: Create a separate requirements.txt for prod (as editable install is not needed, and is probably unsafe)
+RUN uv pip install --system --no-cache-dir -r service/requirements.txt
+WORKDIR /project/service
+EXPOSE 8010
+
+# TODO: Check if 0.0.0.0 is unsafe (hussein nasser ref video)
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8010"]
