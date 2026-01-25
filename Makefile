@@ -1,7 +1,54 @@
-.PHONY: all
+.PHONY: all 
+
+REPO_ROOT := $(abspath $(PWD))
+export REPO_ROOT
+
+APP_COMPOSE=platform/app/docker-compose.yml
+APP_COMPOSE_DEV=platform/app/docker-compose.dev.yml
+LANGFUSE_COMPOSE=platform/observability/docker-compose.langfuse.yml
+
+langfuse-dev:
+	docker compose \
+		--env-file platform/observability/.env \
+		--env-file platform/observability/.env.dev \
+		-p langfuse-dev \
+		-f $(LANGFUSE_COMPOSE) \
+		up -d
+
+langfuse-prod:
+	docker compose \
+		--env-file platform/observability/.env \
+		-p langfuse-prod \
+		-f $(LANGFUSE_COMPOSE) \
+		up -d
+
+
+app-dev:
+	docker compose \
+		--env-file platform/app/.env \
+		--env-file platform/app/.env.dev \
+		-p app-dev \
+		-f $(APP_COMPOSE) \
+		-f $(APP_COMPOSE_DEV) \
+		up --build -d
+
+
+app-prod:
+	docker compose \
+		--env-file platform/app/.env \
+		-p app-prod \
+		-f $(APP_COMPOSE) \
+		up --build -d
 
 local-run-dev:
-	docker compose -p dev -f docker-compose.yml -f docker-compose.dev.yml up --build
+	make langfuse-dev
+	make app-dev
 
 local-run-prod:
-	docker compose -p prod -f docker-compose.yml up --build
+	make langfuse-prod
+	make app-prod
+
+# TODO: Adhoc way to ingest products into vectorstore
+ingest-products-vectordb:
+	python chatbot/scripts/ingest_product_data_into_vectorstore.py \
+	--sqlite-db-path "ecom-backend/ecom_backend.db"

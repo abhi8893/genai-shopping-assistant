@@ -10,8 +10,8 @@ services:
       - http
     
     ports:
-      - 8080:8080
-      - 50051:50051
+      - "${WEAVIATE_HTTP_PORT}:8080"
+      - "${WEAVIATE_GRPC_PORT}:50051"
     
     volumes:
       - weaviate_data:/var/lib/weaviate
@@ -28,39 +28,39 @@ services:
   ollama:
     image: ollama/ollama:0.12.9
     ports:
-      - "11434:11434"
+      - "${OLLAMA_PORT}:11434"
     volumes:
       - ollama_data:/root/.ollama
 
   chatbot:
     build:
-      context: ./chatbot
+      context: ${REPO_ROOT}/chatbot
       dockerfile: Dockerfile
       target: prod
     image: shopping_assistant_chatbot:prod
     ports:
-      - "8010:8010"
+      - "${CHATBOT_PORT}:8010"
     environment:
       OPENAI_BASE_URL: ${OPENAI_BASE_URL}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       WEAVIATE_HTTP_HOST: weaviate
-      WEAVIATE_HTTP_PORT: 8080
+      WEAVIATE_HTTP_PORT: ${WEAVIATE_HTTP_PORT}
       WEAVIATE_HTTP_SECURE: false
       WEAVIATE_GRPC_HOST: weaviate
-      WEAVIATE_GRPC_PORT: 50051
+      WEAVIATE_GRPC_PORT: ${WEAVIATE_GRPC_PORT}
       WEAVIATE_GRPC_SECURE: false
 
       # Accessing the ECOM API running on host machine from the chatbot container
-      ECOM_API_BASE_URL: http://host.docker.internal:8000/api/v1
+      ECOM_API_BASE_URL: 'http://ecom-backend:${ECOM_API_PORT}/api/v1'
 
   ecom-backend:
     build:
-      context: ./ecom-backend
+      context: ${REPO_ROOT}/ecom-backend
       dockerfile: Dockerfile
       target: prod
     image: ecom-backend:prod
     ports:
-      - "8000:8000"      
+      - "${ECOM_API_PORT}:8000"      
 
 volumes:
   weaviate_data:

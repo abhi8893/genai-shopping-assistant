@@ -1,18 +1,16 @@
 services:
+
   chatbot:
     build:
       target: dev
     image: shopping_assistant_chatbot:dev
     volumes:
-      - ./chatbot:/project
-    ports:
-      - "8011:8010"
+      - ${REPO_ROOT}/chatbot:/project
+
 
   ecom-backend:
     build:
       target: dev
     image: ecom-backend:dev
     volumes:
-      - ./ecom-backend:/project
-    ports:
-      - "8001:8000"
+      - ${REPO_ROOT}/ecom-backend:/project
