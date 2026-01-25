@@ -13,7 +13,7 @@ load_dotenv()
 VECTOR_DB_COLLECTION_NAME = "products"
 OLLAMA_API_ENDPOINT = "http://ollama:11434"
 EMBEDDING_MODEL = "nomic-embed-text"
-WEAVIATE_INGESTION_BATCH_SIZE = 100
+WEAVIATE_INGESTION_BATCH_SIZE = 20
 PRODUCT_DATA_FIELDS = [
     "product_id",
     "name",
