@@ -2,6 +2,7 @@ from weaviate import WeaviateClient
 import weaviate.classes as wvc
 import functools
 import weaviate
+from langfuse import observe as langfuse_observe
 
 
 class WeaviateConnectionManager:
@@ -37,6 +38,10 @@ def _retrieve_products_client(
     
     return response
 
+@langfuse_observe(
+    name="retrieve-products",
+    as_type="retriever"
+)
 def retrieve_products(
     query: str = None,
     categories: list[str] = None,
