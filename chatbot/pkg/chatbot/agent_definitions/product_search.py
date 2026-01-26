@@ -1,4 +1,5 @@
 
+from langfuse import Langfuse, observe as langfuse_observe
 from weaviate import WeaviateClient
 from chatbot.graph.types import State
 from chatbot.product_retrieval import retrieve_products
@@ -37,11 +38,31 @@ class ProductSearchAgent:
     alias: str = 'Product Search'
 
 
-    def __init__(self, config, openai_client: openai.OpenAI = None, weaviate_client: WeaviateClient = None):
+    def __init__(
+        self,
+        config,
+        openai_client: openai.OpenAI = None, 
+        weaviate_client: WeaviateClient = None,
+        langfuse_client: Langfuse = None
+    ):
         self.config = config
         self.weaviate_client = weaviate_client
         self.openai_client = openai.OpenAI() if openai_client is None else openai_client
+        self.langfuse_client = langfuse_client
 
+
+    @staticmethod
+    @langfuse_observe(name="create-product-retrieval-response", as_type="span")
+    def _create_product_retrieval_response(products_retrieved: list[ProductVectorDBRecord]) -> str:
+
+        if not products_retrieved:
+            asst_response = "I found no products based on your query. Can you please rephrase your query?"
+        else:
+            product_list_prompt_str = get_product_list_prompt_str(products_retrieved)
+
+        asst_response = "I found the following products based on your query:\n\n" + product_list_prompt_str
+
+        return asst_response
 
     def run(self, state: State) -> State:
 
@@ -91,11 +112,7 @@ class ProductSearchAgent:
 
         products_retrieved = [ProductVectorDBRecord(**p.properties) for p in product_retrieval_response.objects]
 
-        if not product_retrieval_response.objects:
-            asst_response = "I found no products based on your query. Can you please rephrase your query?"
-        else:
-            product_list_prompt_str = get_product_list_prompt_str(products_retrieved)
-            asst_response = "I found the following products based on your query:\n\n" + product_list_prompt_str
+        asst_response = self._create_product_retrieval_response(products_retrieved=products_retrieved)
 
         new_state = State(
             messages=[
