@@ -4,7 +4,11 @@ from chatbot.graph.types import State
 from chatbot.product_retrieval import retrieve_products
 from chatbot.types import ProductVectorDBRecord
 from pydantic import BaseModel, Field
-import openai
+
+try:
+    from langfuse.openai import openai
+except ImportError:
+    import openai
 
 
 def get_product_list_prompt_str(products: list[ProductVectorDBRecord]) -> str:
@@ -58,13 +62,13 @@ class ProductSearchAgent:
             {'role': 'user', 'content': state.messages[-1]['content']}
         ]
         
-        response = self.openai_client.chat.compleletions.parse(
+        response = self.openai_client.chat.completions.parse(
             model=self.config['llm'],
             messages=input_messages,
             response_format=ProductRetrievalAgentResponse
         )
 
-        prod_retrieval_agent_response = response.choices[0].messages.parsed
+        prod_retrieval_agent_response = response.choices[0].message.parsed
 
 
 

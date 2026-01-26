@@ -1,4 +1,8 @@
-import openai
+try:
+    from langfuse.openai import openai
+except ImportError:
+    import openai
+
 from weaviate import WeaviateClient
 from chatbot.graph.types import State
 from chatbot.agent_definitions import RouterAgent, ShoppingActionsAgent, CustomerServiceAgent, ProductSearchAgent
