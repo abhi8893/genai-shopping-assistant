@@ -5,44 +5,6 @@ from agents import FunctionTool, function_tool
 from typing import Annotated
 from chatbot.tools.cart_actions import Cart
 
-# TODO: This should be moved somewhere else (This is NOT shopping actions specific functionality)
-# class Cart:
-#     def __init__(self, user_id: str):
-#         self.user_id = user_id
-#         self.items = Counter()
-
-#     def add_item(self, item_id: str, quantity: int):
-#         self.items[item_id] += quantity
-#         return self
-
-#     def remove_item(self, item_id: str, quantity: int):
-#         cur_qty = self.items.get(item_id, 0)
-#         if cur_qty < quantity:
-#             raise ValueError("Not enough quantity in cart")
-#         if cur_qty == quantity:
-#             return self.empty_item(item_id)
-    
-#         self.items[item_id] -= quantity
-#         return self
-
-#     def empty_cart(self):
-#         self.items.clear()
-#         return self
-
-#     def empty_item(self, item_id: str):
-#         cur_qty = self.items.get(item_id, 0)
-#         if cur_qty == 0:
-#             raise ValueError("Item not found in cart")
-            
-#         self.items.pop(item_id)
-#         return self
-
-#     def view_cart(self):
-#         return dict(self.items)
-
-#     def __repr__(self) -> str:
-#         return f'Cart({self.view_cart()})'
-
 
 class ShoppingActionsAgent:
 
