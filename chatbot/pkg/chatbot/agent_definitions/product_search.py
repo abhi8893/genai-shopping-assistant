@@ -33,7 +33,7 @@ class ProductSearchAgent:
     alias: str = 'Product Search'
 
 
-    def __init__(self, config, openai_client: openai.OpenAI = None,  weaviate_client: WeaviateClient = None):
+    def __init__(self, config, openai_client: openai.OpenAI = None, weaviate_client: WeaviateClient = None):
         self.config = config
         self.weaviate_client = weaviate_client
         self.openai_client = openai.OpenAI() if openai_client is None else openai_client
@@ -58,13 +58,13 @@ class ProductSearchAgent:
             {'role': 'user', 'content': state.messages[-1]['content']}
         ]
         
-        response = self.openai_client.responses.parse(
+        response = self.openai_client.chat.compleletions.parse(
             model=self.config['llm'],
-            input=input_messages,
-            text_format=ProductRetrievalAgentResponse
+            messages=input_messages,
+            response_format=ProductRetrievalAgentResponse
         )
 
-        prod_retrieval_agent_response = response.output_parsed
+        prod_retrieval_agent_response = response.choices[0].messages.parsed
 
 
 
