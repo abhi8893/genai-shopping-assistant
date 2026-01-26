@@ -49,6 +49,9 @@ services:
       WEAVIATE_GRPC_HOST: weaviate
       WEAVIATE_GRPC_PORT: ${WEAVIATE_GRPC_PORT}
       WEAVIATE_GRPC_SECURE: false
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY}
+      LANGFUSE_BASE_URL: ${LANGFUSE_BASE_URL}
 
       # Accessing the ECOM API running on host machine from the chatbot container
       ECOM_API_BASE_URL: 'http://ecom-backend:${ECOM_API_PORT}/api/v1'

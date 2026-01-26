@@ -14,7 +14,10 @@ dependencies = [
     "openai-agents", "openai", 
     "langchain", "langchain_community",
     "weaviate-client",
-    "gradio"
+    "gradio",
+    "langfuse",
+    "openinference-instrumentation-openai-agents",
+    "logfire"
 ]
 
 [tool.setuptools.packages.find]

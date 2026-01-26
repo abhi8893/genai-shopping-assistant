@@ -28,12 +28,10 @@ class RouterAgent:
             {"role": "user", "content": f"Route based on this message: {state.messages[-1]['content']}"}
         ]
 
-        response = self.openai_client.responses.parse(
+        response = self.openai_client.chat.completions.parse(
             model=self.config["llm"],
-            input=input_messages,
-            text_format=DownstreamRoutesAgentResponse
+            messages=input_messages,
+            response_format=DownstreamRoutesAgentResponse
         )
 
-        return response.output_parsed.route
-
-        
+        return response.choices[0].message.parsed.route

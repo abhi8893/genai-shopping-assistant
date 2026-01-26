@@ -1,4 +1,8 @@
-import openai
+try:
+    from langfuse.openai import openai
+except ImportError:
+    import openai
+
 from weaviate import WeaviateClient
 from chatbot.graph.types import State
 from chatbot.agent_definitions import RouterAgent, ShoppingActionsAgent, CustomerServiceAgent, ProductSearchAgent
@@ -9,6 +13,8 @@ from langgraph.checkpoint.memory import InMemorySaver
 from chatbot.graph.graph import build_graph
 from langchain_core.runnables import RunnableConfig
 import gradio as gr
+from langfuse import Langfuse
+from langfuse.langchain import CallbackHandler as LangfuseCallbackHandler
 
 
 
@@ -20,12 +26,14 @@ class Chat:
         ecom_api_client: EcomAPIClient = None,
         openai_client: openai.OpenAI = None,
         weaviate_client: WeaviateClient = None,
+        langfuse_client: Langfuse = None,
     ):
         self.config = config
         self.ecom_api_client = ecom_api_client if ecom_api_client is not None else EcomAPIClient(base_url="http://localhost:8000/api/v1")
         self.openai_client = openai.OpenAI() if openai_client is None else openai_client
         self.weaviate_client = weaviate_client
-        
+        self.langfuse_client = langfuse_client
+
         self.cart = self._fetch_cart()
         self.agents = self._initialize_agents(cart=self.cart)
         self.memory = self._initialize_memory()
@@ -38,7 +46,16 @@ class Chat:
 
     @property
     def run_config(self) -> RunnableConfig:
-        return {"configurable": {"thread_id": self.thread_id}}
+        base_conf = {
+            "configurable": {"thread_id": self.thread_id},
+        }
+
+        if self.langfuse_client is not None:
+            # TODO: Does this cause additional network I/O? 
+            # Or can LangfuseCallbackHandler gracefully fail if Langfuse is not available?
+            if self.langfuse_client.auth_check():
+                base_conf["callbacks"] = [LangfuseCallbackHandler()]
+        return base_conf
 
 
     async def query(self, query: str) -> str:

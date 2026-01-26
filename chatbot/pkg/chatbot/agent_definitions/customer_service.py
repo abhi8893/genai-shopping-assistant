@@ -1,4 +1,8 @@
-import openai
+try:
+    from langfuse.openai import openai
+except ImportError:
+    import openai
+
 from chatbot.graph.types import State
 
 class CustomerServiceAgent:
