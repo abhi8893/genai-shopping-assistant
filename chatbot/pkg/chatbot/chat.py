@@ -102,7 +102,7 @@ class Chat:
 
         agents["router"] = RouterAgent(self.config['agents']['router'], openai_client=self.openai_client)
         agents["shopping_actions"] = ShoppingActionsAgent(self.config['agents']['shopping_actions'], cart=cart)
-        agents["product_search"] = ProductSearchAgent(self.config['agents']['product_search'], openai_client=self.openai_client, weaviate_client=self.weaviate_client)
+        agents["product_search"] = ProductSearchAgent(self.config['agents']['product_search'], openai_client=self.openai_client, weaviate_client=self.weaviate_client, langfuse_client=self.langfuse_client)
         agents["customer_service"] = CustomerServiceAgent(self.config['agents']['customer_service'], openai_client=self.openai_client)
 
         return agents
