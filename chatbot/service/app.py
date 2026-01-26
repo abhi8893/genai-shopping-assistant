@@ -9,7 +9,7 @@ import os
 
 from chatbot.external.ecom_api_client.client import EcomAPIClient
 from chatbot.external.ecom_api_client.credentials import Credentials as EcomAPICredentials
-
+from chatbot.observability.utils import configure_langfuse
 
 VERSION = "0.1.0"
 
@@ -61,10 +61,13 @@ def initialize_chat(user_id: str, thread_id: str):
         )
     )
 
+    langfuse_client = configure_langfuse()
+
     CHATS[chat_id] = Chat(
         config=CONFIG,
         weaviate_client=weaviate_client,
-        ecom_api_client=ecom_api_client
+        ecom_api_client=ecom_api_client,
+        langfuse_client=langfuse_client
     )
     CHATS[chat_id].set_thread(thread_id)
 
