@@ -1,0 +1,39 @@
+name: Main workflow
+
+
+on:
+  push:
+    branches:
+      - "**"
+
+
+env:
+  PYTHON_VERSION: "3.12"
+
+
+jobs:
+  
+  run_checks:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: Setup code quality env
+        run: |
+          uv venv .venv-checks --python ${{ env.PYTHON_VERSION }}
+          source .venv-checks/bin/activate
+
+          uv pip install pre-commit
+
+      - name: Run code quality checks
+        run: |
+          source .venv-checks/bin/activate
+          make check-all
