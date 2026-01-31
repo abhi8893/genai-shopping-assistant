@@ -36,4 +36,4 @@ jobs:
       - name: Run code quality checks
         run: |
           source .venv-checks/bin/activate
-          make check-all
+          SKIP=no-commit-to-branch make check-all

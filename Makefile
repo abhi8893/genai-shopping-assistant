@@ -55,7 +55,7 @@ ingest-products-vectordb:
 
 
 check-all:
-	SKIP=no-commit-to-branch pre-commit run --all-files $(if $(FILE),$(FILE),)
+	pre-commit run --all-files $(if $(FILE),$(FILE),)
 
 check-lint:
 	pre-commit run ruff --all-files $(if $(FILE),$(FILE),)
