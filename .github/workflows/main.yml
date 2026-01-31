@@ -21,15 +21,10 @@ jobs:
         uses: actions/checkout@v4
       
       - name: Install uv
-        run: |
-          # Install uv
-          curl -sSL https://raw.githubusercontent.com/indygreg/uv/main/install.sh | bash 
-          export PATH="$HOME/.uv/bin:$PATH" 
+        uses: astral-sh/setup-uv@v7
 
-      - name: Setup Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Set up Python
+        run: uv python install --version ${{ env.PYTHON_VERSION }}
 
       - name: Setup code quality env
         run: |
