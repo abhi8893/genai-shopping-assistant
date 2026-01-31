@@ -20,6 +20,14 @@ dependencies = [
     "logfire"
 ]
 
+[dependency-groups]
+dev = [
+    { include-group = "test" },
+    { include-group = "notebook" }
+]
+test = ["pytest", "pytest-cov"]
+notebook = ["jupyter"]
+
 [tool.setuptools.packages.find]
-where = ["."]
+where = ["src/"]
 include = ["chatbot*"]
