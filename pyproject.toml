@@ -23,3 +23,62 @@ dependencies = [
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["shopping_assistant*"]
+
+
+# TODO: Remove from here and put into a separate ruff.toml (until I refactor this package to a separate packages/ folder)
+# Ruff #############################################################################################
+[tool.ruff]
+exclude = [
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".mypy_cache",
+    ".pytype",
+    ".ruff_cache",
+    "__pypackages__",
+    "_build",
+    "build",
+    "dist",
+    "tools",
+    ".github",
+
+    # Tests (# TODO: Revisit)
+    "test_*.py",
+    "conftest.py",
+]
+target-version = "py310"
+indent-width = 4
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = [ "F401" ]
+
+# Ruff #############################################################################################
+
+# Ruff Lint
+[tool.ruff.lint]
+select = []
+ignore = []
+
+fixable = [
+    "ALL", # Allow fix for all enabled rules (when `--fix`) is provided.
+]
+unfixable = [  ]
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$" # Allow unused variables when underscore-prefixed.
+
+# Ruff Lint: Pycodestyle ###############################################################################
+[tool.ruff.lint.pycodestyle]
+max-doc-length = 88
+max-line-length = 88
+
+# Ruff plugins #####################################################################################
+[tool.ruff.lint.mccabe]
+max-complexity = 10 # Unlike Flake8, default to a complexity level of 10.
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
