@@ -59,15 +59,15 @@ engine = sqlalchemy.create_engine(f"sqlite:///{args.sqlite_db_path}")
 with engine.connect() as conn:
     df = pd.read_sql(
         """
-        SELECT 
+        SELECT
             prod.*,
-            prod_h.category_name, 
+            prod_h.category_name,
             prod_h.subcategory_name,
-            prod_h.category_slug, 
+            prod_h.category_slug,
             prod_h.subcategory_slug
-            
+
         FROM product prod
-        JOIN product_hierarchy prod_h 
+        JOIN product_hierarchy prod_h
         ON (prod_h.category_id = prod.category_id)
         AND (prod_h.subcategory_id = prod.subcategory_id)
         """,
