@@ -3,12 +3,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from chatbot.chat import Chat
 from chatbot.config import load_config
-from chatbot.env import load_env
 import weaviate
 import os
 
 from chatbot.external.ecom_api_client.client import EcomAPIClient
-from chatbot.external.ecom_api_client.credentials import Credentials as EcomAPICredentials
+from chatbot.external.ecom_api_client.credentials import (
+    Credentials as EcomAPICredentials,
+)
 from chatbot.observability.utils import configure_langfuse
 
 VERSION = "0.1.0"
@@ -39,13 +40,13 @@ def initialize_chat(user_id: str, thread_id: str):
         http={
             "host": os.getenv("WEAVIATE_HTTP_HOST"),
             "port": os.getenv("WEAVIATE_HTTP_PORT"),
-            "secure": os.getenv("WEAVIATE_HTTP_SECURE")
+            "secure": os.getenv("WEAVIATE_HTTP_SECURE"),
         },
         grpc={
             "host": os.getenv("WEAVIATE_GRPC_HOST"),
             "port": os.getenv("WEAVIATE_GRPC_PORT"),
-            "secure": os.getenv("WEAVIATE_GRPC_SECURE")
-        }
+            "secure": os.getenv("WEAVIATE_GRPC_SECURE"),
+        },
     )
 
     weaviate_client = weaviate.WeaviateClient(
@@ -55,10 +56,7 @@ def initialize_chat(user_id: str, thread_id: str):
     chat_id = (user_id, thread_id)
 
     ecom_api_client = EcomAPIClient(
-        base_url=ECOM_API_BASE_URL,
-        credentials=EcomAPICredentials(
-            user_id=user_id
-        )
+        base_url=ECOM_API_BASE_URL, credentials=EcomAPICredentials(user_id=user_id)
     )
 
     langfuse_client = configure_langfuse()
@@ -67,11 +65,9 @@ def initialize_chat(user_id: str, thread_id: str):
         config=CONFIG,
         weaviate_client=weaviate_client,
         ecom_api_client=ecom_api_client,
-        langfuse_client=langfuse_client
+        langfuse_client=langfuse_client,
     )
     CHATS[chat_id].set_thread(thread_id)
-
-
 
 
 class Request(BaseModel):
@@ -79,16 +75,16 @@ class Request(BaseModel):
     query: str
     thread_id: str
 
+
 @app.post("/chat")
 async def chat(request: Request):
-
     chat_id = (request.user_id, request.thread_id)
     chat = CHATS.get(chat_id)
     if not chat:
         initialize_chat(request.user_id, request.thread_id)
 
     chat = CHATS[chat_id]
-    
+
     response = await chat.query(request.query)
     return {"response": response}
 
@@ -105,6 +101,6 @@ async def root():
         "version": VERSION,
         "endpoints": {
             "/chat": "Chat with the chatbot",
-            "/health": "Check if the API is healthy"
-        }
+            "/health": "Check if the API is healthy",
+        },
     }

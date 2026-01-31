@@ -52,3 +52,19 @@ local-run-prod:
 ingest-products-vectordb:
 	python chatbot/scripts/ingest_product_data_into_vectorstore.py \
 	--sqlite-db-path "ecom-backend/ecom_backend.db"
+
+
+check-all:
+	pre-commit run --all-files $(if $(FILE),$(FILE),)
+
+check-lint:
+	pre-commit run ruff --all-files $(if $(FILE),$(FILE),)
+
+check-format:
+	pre-commit run ruff-format --all-files $(if $(FILE),$(FILE),)
+
+# Individual make target for each pre-commit hook
+check-hook-%:
+	pre-commit run --hook-stage manual $* $(if $(FILE),$(FILE),--all-files)
+
+

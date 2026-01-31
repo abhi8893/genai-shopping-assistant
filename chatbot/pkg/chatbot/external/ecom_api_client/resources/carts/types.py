@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 from datetime import datetime
 
+
 class CartItemCreate(BaseModel):
     product_id: int
     quantity: int
@@ -41,4 +42,3 @@ class CartResponse(BaseModel):
 
     class Config:
         from_attributes = True
-    

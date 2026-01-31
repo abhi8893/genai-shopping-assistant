@@ -68,7 +68,7 @@ class Cart:
     def __init__(self, api_client: EcomAPIClient):
         self.api_client = api_client
         self._init_cart()
-    
+
     def _init_cart(self):
         carts = self.api_client.carts.get_all_carts()
 
@@ -82,7 +82,7 @@ class Cart:
             cart = carts[0]
 
         self._cart_id = cart.id
-        
+
 
     def _get_counter_from_cart_items(self, cart_items: list[chatbot.types.CartItem]) -> Counter:
 
@@ -113,7 +113,7 @@ class Cart:
     def view_cart(self):
         return dict(self.counter)
 
-    
+
     def add_item(self, product_slug: str, quantity: int):
         counter = self.counter
         counter[product_slug] += quantity
@@ -125,7 +125,7 @@ class Cart:
         )
         return self
 
-    
+
     def remove_item(self, product_slug: str, quantity: int):
         counter = self.counter
         cur_qty = counter.get(product_slug, 0)
@@ -149,7 +149,7 @@ class Cart:
         cur_qty = counter.get(product_slug, 0)
         if cur_qty == 0:
             raise ValueError("Item not found in cart")
-        
+
         counter[product_slug] = 0
         self.api_client.carts.update_cart(
             cart_update_data=CartUpdateBody(
@@ -166,7 +166,3 @@ class Cart:
             cart_id=self._cart_id
         )
         return self
-        
-
-
-

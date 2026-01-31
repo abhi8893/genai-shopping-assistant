@@ -7,5 +7,5 @@ __all__ = [
     "RouterAgent",
     "ShoppingActionsAgent",
     "CustomerServiceAgent",
-    "ProductSearchAgent"
+    "ProductSearchAgent",
 ]

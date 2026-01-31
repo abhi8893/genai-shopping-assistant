@@ -8,10 +8,7 @@ api_v1_router.include_router(carts_router)
 api_v1_router.include_router(products_router)
 api_v1_router.include_router(users_router)
 
+
 @api_v1_router.get("/")
 def root():
-    return {
-        "message": "Welcome to the E-commerce API",
-        "version": "v1"
-    }
-
+    return {"message": "Welcome to the E-commerce API", "version": "v1"}

@@ -1,0 +1,46 @@
+default_language_version: 
+  python: "3.12"
+
+
+repos:
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-merge-conflict
+        name: check-merge-conflict
+        types: [python]
+
+      - id: no-commit-to-branch
+        name: no-commit-to-branch
+        types: [python]
+        args: [--branch, develop, --branch, main]
+
+      - id: end-of-file-fixer
+        name: end-of-file-fixer
+        types: [python]
+
+      - id: check-yaml
+        name: check-yaml
+        types: [yaml]
+
+      - id: trailing-whitespace
+        name: trailing-whitespace
+        types: [python]
+
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: "v0.14.6"
+    hooks:
+      - id: ruff
+        name: ruff
+        types: [python]
+        args: [--fix, --config, pyproject.toml]
+
+      - id: ruff-format
+        name: ruff-format
+        types: [python]
+        args: [--config, pyproject.toml]
+
+      
+
+      
