@@ -62,8 +62,10 @@ line-ending = "auto"
 
 # Ruff Lint
 [tool.ruff.lint]
-select = []
-ignore = []
+
+# TODO: Add a custom list later
+# select = []
+# ignore = []
 
 fixable = [
     "ALL", # Allow fix for all enabled rules (when `--fix`) is provided.
