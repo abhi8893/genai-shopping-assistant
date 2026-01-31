@@ -3,6 +3,7 @@ from datetime import datetime
 
 # Output Schemas
 
+
 class UserData(BaseModel):
     id: int
     first_name: str

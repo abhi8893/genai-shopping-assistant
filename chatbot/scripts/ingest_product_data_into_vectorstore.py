@@ -26,12 +26,7 @@ PRODUCT_DATA_FIELDS = [
     "category_slug",
     "subcategory_slug",
 ]
-EMBEDDING_FIELDS = [
-    "name",
-    "description",
-    "category_name",
-    "subcategory_name"
-]
+EMBEDDING_FIELDS = ["name", "description", "category_name", "subcategory_name"]
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -41,7 +36,9 @@ parser.add_argument("--sqlite-db-path")
 parser.add_argument("--vector-db-collection-name", default=VECTOR_DB_COLLECTION_NAME)
 parser.add_argument("--ollama-api-endpoint", default=OLLAMA_API_ENDPOINT)
 parser.add_argument("--embedding-model", default=EMBEDDING_MODEL)
-parser.add_argument("--weaviate-ingestion-batch-size", default=WEAVIATE_INGESTION_BATCH_SIZE)
+parser.add_argument(
+    "--weaviate-ingestion-batch-size", default=WEAVIATE_INGESTION_BATCH_SIZE
+)
 parser.add_argument("--weaviate-http-host", default=os.getenv("WEAVIATE_HTTP_HOST"))
 parser.add_argument("--weaviate-http-port", default=os.getenv("WEAVIATE_HTTP_PORT"))
 parser.add_argument("--weaviate-http-secure", default=os.getenv("WEAVIATE_HTTP_SECURE"))
@@ -73,31 +70,27 @@ with engine.connect() as conn:
         JOIN product_hierarchy prod_h 
         ON (prod_h.category_id = prod.category_id)
         AND (prod_h.subcategory_id = prod.subcategory_id)
-        """, 
-        conn
+        """,
+        conn,
     )
 
-df = df.rename(columns={
-    "id": "product_id"
-})
+df = df.rename(columns={"id": "product_id"})
 
 # Create weaviate client
 weaviate_connection_params = weaviate.connect.ConnectionParams(
-        http={
-            "host": args.weaviate_http_host,
-            "port": args.weaviate_http_port,
-            "secure": args.weaviate_http_secure
-        },
-        grpc={
-            "host": args.weaviate_grpc_host,
-            "port": args.weaviate_grpc_port,
-            "secure": args.weaviate_grpc_secure
-        }
-    )
-
-weaviate_client = weaviate.WeaviateClient(
-    connection_params=weaviate_connection_params
+    http={
+        "host": args.weaviate_http_host,
+        "port": args.weaviate_http_port,
+        "secure": args.weaviate_http_secure,
+    },
+    grpc={
+        "host": args.weaviate_grpc_host,
+        "port": args.weaviate_grpc_port,
+        "secure": args.weaviate_grpc_secure,
+    },
 )
+
+weaviate_client = weaviate.WeaviateClient(connection_params=weaviate_connection_params)
 
 
 with WeaviateConnectionManager(client=weaviate_client) as weaviate_client_connected:
@@ -110,23 +103,26 @@ with WeaviateConnectionManager(client=weaviate_client) as weaviate_client_connec
         vector_config=wvc.config.Configure.Vectors.text2vec_ollama(
             api_endpoint=args.ollama_api_endpoint,
             model=args.embedding_model,
-            source_properties=EMBEDDING_FIELDS
+            source_properties=EMBEDDING_FIELDS,
         ),
         properties=[
-            wvc.config.Property(
-                name="product_id",
-                data_type=wvc.config.DataType.INT
-            )
-        ]
+            wvc.config.Property(name="product_id", data_type=wvc.config.DataType.INT)
+        ],
     )
 
     logger.info("Embedding fields set to %s", EMBEDDING_FIELDS)
 
-    logger.info("Ingesting %s records into collection: %s", len(df), VECTOR_DB_COLLECTION_NAME)
+    logger.info(
+        "Ingesting %s records into collection: %s", len(df), VECTOR_DB_COLLECTION_NAME
+    )
     with products.batch.fixed_size(batch_size=WEAVIATE_INGESTION_BATCH_SIZE) as batch:
         for idx, row in df[PRODUCT_DATA_FIELDS].iterrows():
             rec = row.to_dict()
             batch.add_object(properties=rec)
 
 
-logger.info("Successfully ingested %s records into collection: %s", len(df), VECTOR_DB_COLLECTION_NAME)
+logger.info(
+    "Successfully ingested %s records into collection: %s",
+    len(df),
+    VECTOR_DB_COLLECTION_NAME,
+)

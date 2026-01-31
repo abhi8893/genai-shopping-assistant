@@ -5,10 +5,9 @@ from abc import ABC, abstractmethod
 
 
 class CartRepository(ABC):
-
     def __init__(self, db: Session):
-        self.db = db 
-    
+        self.db = db
+
     @abstractmethod
     def get_all(self, user_id: int, page: int, limit: int) -> list[CartDB]:
         pass
@@ -29,10 +28,16 @@ class CartRepository(ABC):
     def delete(self, cart_id: int) -> None:
         pass
 
-class SQLAlchemyCartRepository(CartRepository):
 
+class SQLAlchemyCartRepository(CartRepository):
     def get_all(self, user_id: int, page: int, limit: int) -> list[CartDB]:
-        carts = self.db.query(CartDB).filter(CartDB.user_id == user_id).offset((page - 1) * limit).limit(limit).all()
+        carts = (
+            self.db.query(CartDB)
+            .filter(CartDB.user_id == user_id)
+            .offset((page - 1) * limit)
+            .limit(limit)
+            .all()
+        )
         if not carts:
             raise ResourceNotFoundException(f"Carts not found for user_id {user_id}")
         return carts
@@ -64,6 +69,3 @@ class SQLAlchemyCartRepository(CartRepository):
     def empty_cart(self, cart_id: int) -> None:
         self.db.query(CartItemDB).filter(CartItemDB.cart_id == cart_id).delete()
         self.db.commit()
-    
-
-    

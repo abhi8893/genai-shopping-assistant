@@ -7,6 +7,7 @@ from datetime import datetime
 
 # Input Schemas
 
+
 class CartItemCreate(BaseModel):
     product_id: int
     quantity: int
@@ -14,11 +15,13 @@ class CartItemCreate(BaseModel):
     class Config:
         from_attributes = True
 
+
 class CartCreate(BaseModel):
     cart_items: list[CartItemCreate]
 
     class Config:
         from_attributes = True
+
 
 class CartUpdate(BaseModel):
     cart_items: list[CartItemCreate]
@@ -29,6 +32,7 @@ class CartUpdate(BaseModel):
 
 # Output Schemas
 
+
 class CartItemData(BaseModel):
     id: int
     product_id: int
@@ -38,6 +42,7 @@ class CartItemData(BaseModel):
     class Config:
         from_attributes = True
 
+
 class CartData(BaseModel):
     id: int
     user_id: int
@@ -46,8 +51,3 @@ class CartData(BaseModel):
 
     class Config:
         from_attributes = True
-
-
-
-
-    

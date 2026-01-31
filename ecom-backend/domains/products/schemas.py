@@ -3,6 +3,7 @@ from pydantic import BaseModel, model_validator
 
 # Input Schemas
 
+
 # TODO: Make slug creation server side logic (with optional override)
 class ProductCreate(BaseModel):
     name: str
@@ -14,6 +15,7 @@ class ProductCreate(BaseModel):
 
     class Config:
         from_attributes = True
+
 
 class ProductUpdate(BaseModel):
     name: str | None = None
@@ -34,8 +36,8 @@ class ProductUpdate(BaseModel):
         return self
 
 
-
 # Output Schemas
+
 
 class ProductData(BaseModel):
     id: int

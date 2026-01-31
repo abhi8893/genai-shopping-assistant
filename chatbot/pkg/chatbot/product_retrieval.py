@@ -6,7 +6,6 @@ from langfuse import observe as langfuse_observe
 
 
 class WeaviateConnectionManager:
-
     def __init__(self, client: WeaviateClient):
         self.client = client
 
@@ -17,7 +16,6 @@ class WeaviateConnectionManager:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.client.close()
 
-    
 
 def _retrieve_products_client(
     weaviate_client: WeaviateClient,
@@ -26,7 +24,7 @@ def _retrieve_products_client(
     n: int = 5,
 ):
     products = weaviate_client.collections.use("products")
-    
+
     if not query:
         response = products.query.fetch_objects(filters=filter_obj, limit=n)
     else:
@@ -35,13 +33,11 @@ def _retrieve_products_client(
             filters=filter_obj,
             limit=n,
         )
-    
+
     return response
 
-@langfuse_observe(
-    name="retrieve-products",
-    as_type="retriever"
-)
+
+@langfuse_observe(name="retrieve-products", as_type="retriever")
 def retrieve_products(
     query: str = None,
     categories: list[str] = None,
@@ -73,9 +69,7 @@ def retrieve_products(
         )
 
     if max_price:
-        filters.append(
-            wvc.query.Filter.by_property("price").less_or_equal(max_price)
-        )
+        filters.append(wvc.query.Filter.by_property("price").less_or_equal(max_price))
 
     if filters:
         filter_obj = functools.reduce(

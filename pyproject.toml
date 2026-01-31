@@ -46,7 +46,7 @@ exclude = [
     "test_*.py",
     "conftest.py",
 ]
-target-version = "py310"
+target-version = "py312"
 indent-width = 4
 
 [tool.ruff.format]

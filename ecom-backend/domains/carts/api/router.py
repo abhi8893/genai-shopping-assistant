@@ -1,7 +1,5 @@
 from fastapi import APIRouter, status, Depends, Query
-from domains.carts.schemas import (
-    CartData, CartCreate, CartUpdate
-)
+from domains.carts.schemas import CartData, CartCreate, CartUpdate
 from domains.carts.service import CartService
 from domains.carts.api.dependencies import get_cart_service
 from domains.users.api.dependencies import get_current_user
@@ -19,31 +17,49 @@ def get_all_carts(
 ):
     return service.get_all(user.id, page, limit)
 
-@router.get("/{cart_id}", response_model=CartData, status_code=status.HTTP_200_OK, dependencies=[Depends(get_current_user)])
+
+@router.get(
+    "/{cart_id}",
+    response_model=CartData,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(get_current_user)],
+)
 def get_cart(
     cart_id: int,
     service: CartService = Depends(get_cart_service),
 ):
     return service.get(cart_id)
 
+
 @router.post("/", response_model=CartData, status_code=status.HTTP_201_CREATED)
 def create_cart(
     cart: CartCreate,
-    user: UserDB = Depends(get_current_user),   
+    user: UserDB = Depends(get_current_user),
     cart_service: CartService = Depends(get_cart_service),
 ):
     return cart_service.create(cart, user.id)
-    
 
-@router.delete("/{cart_id}", response_model=CartData, status_code=status.HTTP_200_OK, dependencies=[Depends(get_current_user)])
+
+@router.delete(
+    "/{cart_id}",
+    response_model=CartData,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(get_current_user)],
+)
 def delete_cart(
     cart_id: int,
     service: CartService = Depends(get_cart_service),
 ):
     return service.delete(cart_id)
 
-@router.put("/{cart_id}", response_model=CartData, status_code=status.HTTP_200_OK, dependencies=[Depends(get_current_user)])
-def update_cart(cart_id: int, cart: CartUpdate, service: CartService = Depends(get_cart_service)):
-    return service.update(cart, cart_id)
 
-    
+@router.put(
+    "/{cart_id}",
+    response_model=CartData,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(get_current_user)],
+)
+def update_cart(
+    cart_id: int, cart: CartUpdate, service: CartService = Depends(get_cart_service)
+):
+    return service.update(cart, cart_id)
