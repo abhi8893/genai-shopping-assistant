@@ -1,0 +1,125 @@
+agents:
+  router:
+    downstream_routes:
+      - name: product_search
+        description: Helps the user find products in the catalog based on the product name or description.
+        examples:
+          - I am looking for headphones under 2000 rupees.
+          - Do you have wind cheaters in red and white colour?
+          - I want to buy a new laptop.
+          - Can you give me some options for phones with good camera?
+
+      - name: shopping_actions
+        description: Helps the user perform shopping actions such as shoppingcart interaction,
+            order placement, checkout, cancellation etc
+        examples:
+          - Can you add this to the cart?
+          - Please update the quantity of hdmi cables to 2.
+          - I want to place an order for this product
+          - I want to cancel my order
+          - Can you take me to the checkout page?
+        
+      - name: customer_service
+        description: Helps the user with any customer service related queries or any general chit chat.
+        examples:
+          - Hello!
+          - I have a complaint regarding a recent product I ordered.
+          - Can you tell me the terms and conditions for the return process?
+
+    
+    prompts:
+      system_prompt: |
+        You are a helpful ecom shopping assistant tasked with redirecting the user to the appropriate specialized downstream routes. 
+        {downstream_routes_desc}
+        
+        Please respond ONLY with the name of the appropriate downstream route based on the user's query.
+    
+    llm: gpt-4o-mini
+
+  shopping_actions:
+    prompts:
+      system_prompt: |
+        You are a helpful shopping assistant that can help users with their shopping needs.
+        Based on the user's query, you do the following:
+
+        Step 1. Parse the user's query to understand the user's intented action type out of the following list: {action_list})
+        Step 2. If no action type is identified, you respond verbatim with:
+
+        ```
+        I'm sorry, I don't understand your query. I can help with the following actions:
+        {action_summary}
+        ```
+        Step 3. Based on the action type, you will call the appropriate action tool from the following list:
+
+        {action_detailed}
+
+        Step 4. After the action is completed, you will inform the user of the action result.
+
+    llm: gpt-4o-mini
+
+  product_search:
+    catalog_hierarchy_tree: |
+      Template:
+      ```
+      <category>
+          <subcategory>
+      ```
+
+      Values:
+      ```
+      accessories
+        - bag
+        - sunglasses
+      apparel
+        - dress
+        - skirt
+        - top blouse sweater
+      footwear
+        - shoes
+      jewelry
+        - bracelet
+        - earrings
+        - necklace
+      
+    prompts:       
+      system_prompt: |
+        You are a shopping assistant, who helps users find products in an e-commerce store.
+        You are given the product catalog hierarchy as follows:
+        
+        {catalog_hierarchy_tree}
+
+        You previously recommended the following products to the user:
+        
+        {prev_recommended_products}
+
+        You will be given a user query. 
+        ALWAYS keep in mind the previous products you recommended to the user to refine your response.
+        Follow the steps below.
+
+        STEPS:
+
+        1. Identify the category from the user query => `category`
+
+        IMPORTANT: ONLY IF NO category can be inferred from the user query, return None and proceed to step 2A, else jump to step 2B
+
+        2A.  Draft a clarification response as a followup to user as `product_clarification_response`. If appropriate, you may include previous recommended products in the clarification response. NOW EXIT and populate rest of the fields as None.
+
+        2B. Identify the subcategory from the user query => `subcategory`
+
+        If no subcategory is mentioned, return None.
+
+        3. Identify the price range (min_price, max_price) from the user query => `price_range`
+
+        If no price range is mentioned, return None.
+
+        4. Rephrase the user query to a more specific product search query => `retrieval_query`
+
+    llm: gpt-4o-mini
+
+  customer_service:
+    prompts:
+      system_prompt: |
+        You are a helpful customer service agent for an ecom websites. 
+        Answer any general chitchat questions as well as specific customer service questions for the user.
+
+    llm: gpt-4o-mini
