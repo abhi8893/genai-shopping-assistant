@@ -32,14 +32,14 @@ services:
     volumes:
       - ~/.ollama:/root/.ollama
 
-  chatbot:
+  shopping-assistant:
     build:
       context: ${REPO_ROOT}
-      dockerfile: services/chatbot/Dockerfile
+      dockerfile: services/shopping-assistant/Dockerfile
       target: prod
-    image: shopping-assistant-chatbot:prod
+    image: shopping-assistant:prod
     ports:
-      - "${CHATBOT_PORT}:8010"
+      - "${SHOPPING_ASSISTANT_PORT}:8010"
     environment:
       OPENAI_BASE_URL: ${OPENAI_BASE_URL}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
@@ -67,5 +67,4 @@ services:
 
 volumes:
   weaviate_data:
-  # ollama_data:
 
