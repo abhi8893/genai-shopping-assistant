@@ -67,4 +67,6 @@ check-format:
 check-hook-%:
 	pre-commit run --hook-stage manual $* $(if $(FILE),$(FILE),--all-files)
 
-
+# TODO: Refine draw repo tree target
+draw-repo-tree:
+	tree -I "__pycache__|*.pyc|*.pyo|*.pyd|*.py,cover|.pytest_cache|.tox|.eggs|*.egg-info|.mypy_cache|.coverage|htmlcov|.pytest_cache|.venv|venv|env|ENV|.git|.github|.vscode|.idea|.DS_Store" -L 2
