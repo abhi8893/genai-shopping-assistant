@@ -29,7 +29,7 @@ app.add_middleware(
 )
 
 CHATS = {}
-CONF_PATH = "../conf/config.yml"
+CONF_PATH = "config.yml"
 
 CONFIG = load_config(CONF_PATH)
 ECOM_API_BASE_URL = os.getenv("ECOM_API_BASE_URL", "http://localhost:8000/api/v1")

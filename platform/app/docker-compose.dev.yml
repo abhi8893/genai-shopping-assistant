@@ -3,9 +3,10 @@ services:
   chatbot:
     build:
       target: dev
-    image: shopping_assistant_chatbot:dev
+    image: shopping-assistant-chatbot:dev
     volumes:
-      - ${REPO_ROOT}/chatbot:/project
+      - ${REPO_ROOT}/services/chatbot:/project/service
+      - ${REPO_ROOT}/packages/chatbot:/project/packages/chatbot
 
 
   ecom-backend:
@@ -13,4 +14,4 @@ services:
       target: dev
     image: ecom-backend:dev
     volumes:
-      - ${REPO_ROOT}/ecom-backend:/project
+      - ${REPO_ROOT}/services/ecom-backend:/project/service

@@ -8,7 +8,8 @@ from chatbot.product_retrieval import WeaviateConnectionManager
 import pandas as pd
 from dotenv import load_dotenv
 
-load_dotenv()
+# TODO: Adhoc, change env for weaviate in the file
+load_dotenv("platform/app/.env")
 
 VECTOR_DB_COLLECTION_NAME = "products"
 OLLAMA_API_ENDPOINT = "http://ollama:11434"

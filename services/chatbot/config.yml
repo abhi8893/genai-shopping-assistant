@@ -3,7 +3,7 @@ agents:
     downstream_routes:
       - name: product_search
         description: Helps the user find products in the catalog based on the product name or description.
-        examples: |
+        examples:
           - I am looking for headphones under 2000 rupees.
           - Do you have wind cheaters in red and white colour?
           - I want to buy a new laptop.
@@ -21,7 +21,7 @@ agents:
         
       - name: customer_service
         description: Helps the user with any customer service related queries or any general chit chat.
-        examples: |
+        examples:
           - Hello!
           - I have a complaint regarding a recent product I ordered.
           - Can you tell me the terms and conditions for the return process?
@@ -30,10 +30,9 @@ agents:
     prompts:
       system_prompt: |
         You are a helpful ecom shopping assistant tasked with redirecting the user to the appropriate specialized downstream routes. 
-        The available specialized agents are:
         {downstream_routes_desc}
         
-        Please output the appropriate route based on the user's query.
+        Please respond ONLY with the name of the appropriate downstream route based on the user's query.
     
     llm: gpt-4o-mini
 
@@ -124,11 +123,3 @@ agents:
         Answer any general chitchat questions as well as specific customer service questions for the user.
 
     llm: gpt-4o-mini
-        
-
-
-
-
-          
-
-                        

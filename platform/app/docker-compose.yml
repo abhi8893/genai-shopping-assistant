@@ -30,14 +30,14 @@ services:
     ports:
       - "${OLLAMA_PORT}:11434"
     volumes:
-      - ollama_data:/root/.ollama
+      - ~/.ollama:/root/.ollama
 
   chatbot:
     build:
-      context: ${REPO_ROOT}/chatbot
-      dockerfile: Dockerfile
+      context: ${REPO_ROOT}
+      dockerfile: services/chatbot/Dockerfile
       target: prod
-    image: shopping_assistant_chatbot:prod
+    image: shopping-assistant-chatbot:prod
     ports:
       - "${CHATBOT_PORT}:8010"
     environment:
@@ -58,8 +58,8 @@ services:
 
   ecom-backend:
     build:
-      context: ${REPO_ROOT}/ecom-backend
-      dockerfile: Dockerfile
+      context: ${REPO_ROOT}
+      dockerfile: services/ecom-backend/Dockerfile
       target: prod
     image: ecom-backend:prod
     ports:
@@ -67,5 +67,5 @@ services:
 
 volumes:
   weaviate_data:
-  ollama_data:
+  # ollama_data:
 

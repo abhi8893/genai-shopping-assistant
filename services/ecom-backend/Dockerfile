@@ -22,20 +22,24 @@ ENV PATH="/root/.local/bin/:$PATH"
 
 FROM base AS dev
 
-COPY requirements.txt requirements.txt
+COPY services/ecom-backend/requirements.txt service/requirements.txt
 
-RUN uv pip install --system --no-cache-dir -r requirements.txt
+RUN uv pip install --system --no-cache-dir -r service/requirements.txt
 
 EXPOSE 8000
+
+WORKDIR /project/service
 
 CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
 FROM base AS prod
 
-COPY requirements.txt requirements.txt
+COPY services/ecom-backend/requirements.txt service/requirements.txt
 
-RUN uv pip install --system --no-cache-dir -r requirements.txt
+RUN uv pip install --system --no-cache-dir -r service/requirements.txt
 
-COPY . .
+COPY services/ecom-backend service/
+
+WORKDIR /project/service
 
 CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
