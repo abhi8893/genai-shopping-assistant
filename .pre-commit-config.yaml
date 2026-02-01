@@ -34,12 +34,12 @@ repos:
       - id: ruff
         name: ruff
         types: [python]
-        args: [--fix, --config, pyproject.toml]
+        args: [--fix, --config, ruff.toml]
 
       - id: ruff-format
         name: ruff-format
         types: [python]
-        args: [--config, pyproject.toml]
+        args: [--config, ruff.toml]
 
   - repo: https://github.com/rhysd/actionlint
     rev: v1.7.10
