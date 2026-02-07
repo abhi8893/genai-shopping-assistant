@@ -31,7 +31,26 @@ line-ending = "auto"
 [lint]
 
 # TODO: Add a custom list later
-# select = []
+select = [
+    "A", # builtin-variable-shadowing
+    "ARG", # flake8-unused-arguments
+    "B", # flake8-bugbear
+    "C", # flake8-comprehensions
+    "D", # pydocstyle
+    "E", # pycodestyle errors
+    "F", # pyflakes
+    "FLY", # flynt
+    "G", # flake8-logging-format
+    "I", # isort
+    "N", # pep8-naming
+    "PGH", # pygrep-hooks
+    "PL", # pylint
+    "RET", # flake8-return
+    "SIM", # flake8-simplify
+    "SLF", # flake8-self
+    "UP", # pyupgrade
+    "W", # pycodestyle warnings
+]
 # ignore = []
 
 fixable = [
