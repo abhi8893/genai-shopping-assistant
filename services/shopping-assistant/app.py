@@ -1,11 +1,11 @@
+import os
+
+import weaviate
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from shopping_assistant.chat import Chat
 from shopping_assistant.config import load_config
-import weaviate
-import os
-
 from shopping_assistant.external.ecom_api_client.client import EcomAPIClient
 from shopping_assistant.external.ecom_api_client.credentials import (
     Credentials as EcomAPICredentials,
@@ -16,7 +16,10 @@ VERSION = "0.1.0"
 
 app = FastAPI(
     title="Shopping Assistant Chatbot API",
-    description="A shopping assistant chatbot that uses GenAI to help customers find products they are looking for.",
+    description=(
+        "A shopping assistant chatbot that uses GenAI to help customers "
+        "find products they are looking for."
+    ),
     version=VERSION,
 )
 
