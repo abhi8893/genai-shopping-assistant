@@ -54,18 +54,20 @@ ingest-products-vectordb:
 	--sqlite-db-path "ecom-backend/ecom_backend.db"
 
 
+PRECOMMIT_FILES = $(if $(FILE),--files $(FILE),--all-files)
+
 check-all:
-	pre-commit run --all-files $(if $(FILE),$(FILE),)
+	pre-commit run $(PRECOMMIT_FILES)
 
 check-lint:
-	pre-commit run ruff --all-files $(if $(FILE),$(FILE),)
+	pre-commit run ruff $(PRECOMMIT_FILES)
 
 check-format:
-	pre-commit run ruff-format --all-files $(if $(FILE),$(FILE),)
+	pre-commit run ruff-format $(PRECOMMIT_FILES)
 
 # Individual make target for each pre-commit hook
 check-hook-%:
-	pre-commit run --hook-stage manual $* $(if $(FILE),$(FILE),--all-files)
+	pre-commit run --hook-stage manual $* $(PRECOMMIT_FILES)
 
 # TODO: Refine draw repo tree target
 draw-repo-tree:
