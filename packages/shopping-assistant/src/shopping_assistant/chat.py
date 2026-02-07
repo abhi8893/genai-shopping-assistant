@@ -3,25 +3,26 @@ try:
 except ImportError:
     import openai
 
+import gradio as gr
+from langchain_core.runnables import RunnableConfig
+from langfuse import Langfuse
+from langfuse.langchain import CallbackHandler as LangfuseCallbackHandler
+from langgraph.checkpoint.memory import InMemorySaver
 from weaviate import WeaviateClient
-from shopping_assistant.graph.types import State
+
 from shopping_assistant.agent_definitions import (
-    RouterAgent,
-    ShoppingActionsAgent,
     CustomerServiceAgent,
     ProductSearchAgent,
+    RouterAgent,
+    ShoppingActionsAgent,
 )
-from shopping_assistant.tools.cart_actions import Cart
 from shopping_assistant.external.ecom_api_client.client import EcomAPIClient
 from shopping_assistant.external.ecom_api_client.credentials import (
     Credentials as EcomAPICredentials,
 )
-from langgraph.checkpoint.memory import InMemorySaver
 from shopping_assistant.graph.graph import build_graph
-from langchain_core.runnables import RunnableConfig
-import gradio as gr
-from langfuse import Langfuse
-from langfuse.langchain import CallbackHandler as LangfuseCallbackHandler
+from shopping_assistant.graph.types import State
+from shopping_assistant.tools.cart_actions import Cart
 
 
 class Chat:
@@ -58,9 +59,9 @@ class Chat:
             "configurable": {"thread_id": self.thread_id},
         }
 
-        if self.langfuse_client is not None:
-            # TODO: Does this cause additional network I/O?
-            # Or can LangfuseCallbackHandler gracefully fail if Langfuse is not available?
+        if self.langfuse_client is not None:  # noqa: SIM102
+            # TODO: Does this cause additional network I/O? Or can
+            # LangfuseCallbackHandler gracefully fail if Langfuse is not available?
             if self.langfuse_client.auth_check():
                 base_conf["callbacks"] = [LangfuseCallbackHandler()]
         return base_conf
@@ -86,7 +87,7 @@ class Chat:
             print(new_state["messages"][-1]["content"])
 
     def web_ui_chat(self):
-        async def chat(user_input: str, history):
+        async def chat(user_input: str, history):  # noqa: ARG001
             message = {"role": "user", "content": user_input}
 
             response = await self.graph.ainvoke(
@@ -139,9 +140,11 @@ class Chat:
 
 if __name__ == "__main__":
     import asyncio
+
+    from agents import set_tracing_disabled
+
     from shopping_assistant.config import load_config
     from shopping_assistant.env import load_env
-    from agents import set_tracing_disabled
 
     set_tracing_disabled(True)
     load_env(

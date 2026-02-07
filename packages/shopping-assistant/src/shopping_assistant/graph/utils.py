@@ -1,8 +1,10 @@
+import contextlib
+
 from langchain_community.adapters.openai import (
     convert_message_to_dict as convert_lc_message_to_openai_dict,
 )
-from langgraph.graph import add_messages
 from langchain_core.messages import BaseMessage
+from langgraph.graph import add_messages
 
 
 def add_messages_openai(
@@ -12,9 +14,8 @@ def add_messages_openai(
     messages_comb = add_messages(messages_l, messages_r)
 
     for idx, msg in enumerate(messages_comb):
-        try:
+        # TODO: Consider handling better vs suppressing
+        with contextlib.suppress(TypeError):
             messages_comb[idx] = convert_lc_message_to_openai_dict(msg)
-        except TypeError:
-            pass
 
     return messages_comb

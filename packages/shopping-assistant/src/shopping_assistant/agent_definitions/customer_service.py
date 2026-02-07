@@ -25,9 +25,10 @@ class CustomerServiceAgent:
             model=self.config["llm"], messages=input_messages
         )
 
+        agent_response = responses_obj.choices[0].message.content
         response = {
             "role": "assistant",
-            "content": f"{self.alias} Agent: {responses_obj.choices[0].message.content}",
+            "content": f"{self.alias} Agent: {agent_response}",
         }
 
         new_state = State(

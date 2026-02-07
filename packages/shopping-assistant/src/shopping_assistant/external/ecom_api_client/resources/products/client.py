@@ -1,11 +1,11 @@
-from shopping_assistant.external.ecom_api_client.http import HttpClient
 from shopping_assistant.external.ecom_api_client.credentials import Credentials
-from shopping_assistant.external.ecom_api_client.resources.products.types import (
-    ProductResponse,
-)
 from shopping_assistant.external.ecom_api_client.exceptions import (
     ApiError,
     ExceptionResponse,
+)
+from shopping_assistant.external.ecom_api_client.http import HttpClient
+from shopping_assistant.external.ecom_api_client.resources.products.types import (
+    ProductResponse,
 )
 
 

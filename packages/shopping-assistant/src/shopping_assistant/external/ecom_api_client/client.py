@@ -1,8 +1,8 @@
+from shopping_assistant.external.ecom_api_client.credentials import Credentials
 from shopping_assistant.external.ecom_api_client.resources.carts import CartsAPIClient
 from shopping_assistant.external.ecom_api_client.resources.products import (
     ProductsAPIClient,
 )
-from shopping_assistant.external.ecom_api_client.credentials import Credentials
 
 
 class EcomAPIClient:

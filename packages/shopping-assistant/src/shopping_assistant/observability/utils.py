@@ -1,23 +1,27 @@
 import base64
+import logging
+import os
+
+import logfire
 from langfuse import Langfuse
 from langfuse import get_client as get_langfuse_client
-import os
-import logging
-import logfire
 
 
 def configure_langfuse() -> Langfuse:
     # from openinference.instrumentation.openai_agents import OpenAIAgentsInstrumentor
 
-    LANGFUSE_AUTH = base64.b64encode(
-        f"{os.environ.get('LANGFUSE_PUBLIC_KEY')}:{os.environ.get('LANGFUSE_SECRET_KEY')}".encode()
+    langfuse_public_key = os.environ.get("LANGFUSE_PUBLIC_KEY")
+    langfuse_secret_key = os.environ.get("LANGFUSE_SECRET_KEY")
+
+    langfuse_auth = base64.b64encode(
+        f"{langfuse_public_key}:{langfuse_secret_key}".encode()
     ).decode()
 
     # Configure OpenTelemetry endpoint & headers
     os.environ["OTEL_EXPORTER_OTLP_ENDPOINT"] = (
         os.environ.get("LANGFUSE_BASE_URL") + "/api/public/otel"
     )
-    os.environ["OTEL_EXPORTER_OTLP_HEADERS"] = f"Authorization=Basic {LANGFUSE_AUTH}"
+    os.environ["OTEL_EXPORTER_OTLP_HEADERS"] = f"Authorization=Basic {langfuse_auth}"
 
     langfuse = get_langfuse_client()
 
@@ -33,10 +37,12 @@ def configure_langfuse() -> Langfuse:
         service_name="my_agent_service",
         send_to_logfire=False,
     )
-    # This method automatically patches the OpenAI Agents SDK to send logs via OTLP to Langfuse.
+    # This method automatically patches the OpenAI Agents SDK to
+    # send logs via OTLP to Langfuse.
     logfire.instrument_openai_agents()
 
-    # NOTE: Disabled because logfire instrumentation method for openai agents is better somehow (more fields visible in langfuse UI).
+    # NOTE: Disabled because logfire instrumentation method for openai agents
+    # (more fields visible in langfuse UI).
     # OpenAIAgentsInstrumentor().instrument()
 
     return langfuse

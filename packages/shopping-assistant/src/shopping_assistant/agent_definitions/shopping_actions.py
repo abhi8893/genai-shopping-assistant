@@ -1,8 +1,9 @@
 # from collections import Counter
-from shopping_assistant.graph.types import State
-from agents import Agent, Runner
-from agents import FunctionTool, function_tool
 from typing import Annotated
+
+from agents import Agent, FunctionTool, Runner, function_tool
+
+from shopping_assistant.graph.types import State
 from shopping_assistant.tools.cart_actions import Cart
 
 
@@ -33,7 +34,7 @@ class ShoppingActionsAgent:
     @property
     def tools(self):
         tools = []
-        for action, tool_lst in self.tool_store.items():
+        for _action, tool_lst in self.tool_store.items():
             tools += tool_lst
 
         return tools
@@ -111,7 +112,7 @@ class ShoppingActionsAgent:
         self, action_summary: dict[str, str], agent_actions: dict
     ) -> dict[str, str]:
         action_detailed = ""
-        for idx, (action_type, info) in enumerate(agent_actions.items()):
+        for _idx, (action_type, info) in enumerate(agent_actions.items()):
             action_detailed += action_summary[action_type] + "\n"
             for tool in info["tools"]:
                 action_detailed += f"- Tool=`{tool.name}`: {tool.description}" + "\n"
