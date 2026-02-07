@@ -73,3 +73,12 @@ max-complexity = 10
 
 [lint.pydocstyle]
 convention = "google"
+
+[lint.flake8-bugbear]
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Query",
+    "fastapi.Path",
+    "fastapi.Header",
+    "fastapi.Cookie",
+]

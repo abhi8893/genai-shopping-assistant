@@ -1,6 +1,6 @@
-from domains.products.repository import ProductRepository
-from domains.products.schemas import ProductData, ProductCreate, ProductUpdate
 from domains.products.models import ProductDB
+from domains.products.repository import ProductRepository
+from domains.products.schemas import ProductCreate, ProductData, ProductUpdate
 from domains.products.types import ProductHierarchyFilter
 
 

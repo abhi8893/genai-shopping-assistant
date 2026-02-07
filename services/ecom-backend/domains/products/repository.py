@@ -1,9 +1,11 @@
-from domains.products.models import ProductDB
-from sqlalchemy.orm import Session
 from abc import ABC, abstractmethod
-from core.exceptions import ResourceNotFoundException
+
 import sqlalchemy
+from core.exceptions import ResourceNotFoundException
 from sqlalchemy import func as sql_func
+from sqlalchemy.orm import Session
+
+from domains.products.models import ProductDB
 from domains.products.types import ProductHierarchyFilter
 
 
@@ -100,10 +102,12 @@ class SQLAlchemyProductRepository(ProductRepository):
         keyword_filters = []
         if keywords is not None:
             for keyword in keywords:
-                keyword = keyword.lower()
-                keyword_filters.append(sql_func.lower(ProductDB.name).contains(keyword))
+                keyword_lower = keyword.lower()
                 keyword_filters.append(
-                    sql_func.lower(ProductDB.description).contains(keyword)
+                    sql_func.lower(ProductDB.name).contains(keyword_lower)
+                )
+                keyword_filters.append(
+                    sql_func.lower(ProductDB.description).contains(keyword_lower)
                 )
 
         keyword_filter = sqlalchemy.or_(*keyword_filters)

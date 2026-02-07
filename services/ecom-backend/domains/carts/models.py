@@ -1,8 +1,8 @@
 from core.database import Base
-from sqlalchemy import Column, Integer, Float, ForeignKey
-from sqlalchemy.sql.sqltypes import TIMESTAMP
+from sqlalchemy import Column, Float, ForeignKey, Integer
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func as sql_func
+from sqlalchemy.sql.sqltypes import TIMESTAMP
 
 __all__ = ("CartDB", "CartItemDB")
 

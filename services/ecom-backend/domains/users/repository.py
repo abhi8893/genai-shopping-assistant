@@ -1,5 +1,7 @@
-from sqlalchemy.orm import Session
 from abc import ABC, abstractmethod
+
+from sqlalchemy.orm import Session
+
 from domains.users.models import UserDB
 
 

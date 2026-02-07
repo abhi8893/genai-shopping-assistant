@@ -1,8 +1,9 @@
 from core.database import get_db
+from core.exceptions import ResourceNotFoundException, UnauthorizedException
 from fastapi import Depends, Header
 from sqlalchemy.orm import Session
+
 from domains.users.models import UserDB
-from core.exceptions import UnauthorizedException, ResourceNotFoundException
 from domains.users.repository import SQLAlchemyUserRepository
 from domains.users.service import UserService
 

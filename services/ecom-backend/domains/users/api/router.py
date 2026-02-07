@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, Query
+
+from domains.users.api.dependencies import get_user_service
 from domains.users.schemas import UserData
 from domains.users.service import UserService
-from domains.users.api.dependencies import get_user_service
 
 router = APIRouter(tags=["users"], prefix="/users")
 

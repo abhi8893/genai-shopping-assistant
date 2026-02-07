@@ -1,7 +1,8 @@
-from fastapi import APIRouter, status, Depends, Query
-from domains.carts.schemas import CartData, CartCreate, CartUpdate
-from domains.carts.service import CartService
+from fastapi import APIRouter, Depends, Query, status
+
 from domains.carts.api.dependencies import get_cart_service
+from domains.carts.schemas import CartCreate, CartData, CartUpdate
+from domains.carts.service import CartService
 from domains.users.api.dependencies import get_current_user
 from domains.users.models import UserDB
 

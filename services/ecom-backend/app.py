@@ -1,7 +1,7 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from api.v1.exception_handlers import register_exception_handlers
 from api.v1.router import api_v1_router
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 # Main app with no docs
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
