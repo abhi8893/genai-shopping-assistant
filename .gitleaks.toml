@@ -1,0 +1,132 @@
+# Gitleaks configuration file
+# Documentation: https://github.com/gitleaks/gitleaks
+
+title = "Gitleaks Configuration for GenAI Shopping Assistant"
+
+[extend]
+# Use the default gitleaks rules as a base
+useDefault = true
+
+
+[[rules]]
+id = "generic-api-key-allowlist"
+description = "Allow common non-secret API key patterns"
+regex = '''(?i)(api[_-]?key|apikey)['"]?\s*[:=]\s*['"]?(test|example|dummy|sample|your)'''
+[rules.allowlist]
+regexTarget = "match"
+regexes = [
+    '''(?i)(test|example|dummy|sample|your)''',
+]
+
+[[rules]]
+id = "anthropic-admin-api-key"
+description = "Detected an Anthropic Admin API Key, risking unauthorized access to administrative functions and sensitive AI model configurations."
+regex = '''\b(sk-ant-admin01-[a-zA-Z0-9_\-]{93}AA)(?:[\x60'"\s;]|\\[nr]|$)'''
+keywords = ["sk-ant-admin01"]
+
+[[rules]]
+id = "anthropic-api-key"
+description = "Identified an Anthropic API Key, which may compromise AI assistant integrations and expose sensitive data to unauthorized access."
+regex = '''\b(sk-ant-api03-[a-zA-Z0-9_\-]{93}AA)(?:[\x60'"\s;]|\\[nr]|$)'''
+keywords = ["sk-ant-api03"]
+
+
+[[rules]]
+id = "openai-api-key"
+description = "Found an OpenAI API Key, posing a risk of unauthorized access to AI services and data manipulation."
+regex = '''\b(sk-(?:proj|svcacct|admin)-(?:[A-Za-z0-9_-]{74}|[A-Za-z0-9_-]{58})T3BlbkFJ(?:[A-Za-z0-9_-]{74}|[A-Za-z0-9_-]{58})\b|sk-[a-zA-Z0-9]{20}T3BlbkFJ[a-zA-Z0-9]{20})(?:[\x60'"\s;]|\\[nr]|$)'''
+entropy = 3
+keywords = ["t3blbkfj"]
+
+[[rules]]
+id = "cohere-api-token"
+description = "Identified a Cohere Token, posing a risk of unauthorized access to AI services and data manipulation."
+regex = '''[\w.-]{0,50}?(?i:[\w.-]{0,50}?(?:cohere|CO_API_KEY)(?:[ \t\w.-]{0,20})[\s'"]{0,3})(?:=|>|:{1,3}=|\|\||:|=>|\?=|,)[\x60'"\s=]{0,5}([a-zA-Z0-9]{40})(?:[\x60'"\s;]|\\[nr]|$)'''
+entropy = 4
+keywords = [
+    "cohere",
+    "co_api_key",
+]
+
+[[rules]]
+id = "ai-gateway-url"
+description = "Detected AI Gateway URL configuration, which may expose API gateway routing information."
+regex = '''https://.+\.ai-gateway\..+'''
+keywords = ["ai-gateway", "base-url"]
+
+
+[[rules]]
+id = "jwt"
+description = "Uncovered a JSON Web Token, which maybe an AI Gateway JWT token leading to unauthorized access to web applications and sensitive user data."
+regex = '''\b(ey[a-zA-Z0-9]{17,}\.ey[a-zA-Z0-9\/\\_-]{17,}\.(?:[a-zA-Z0-9\/\\_-]{10,}={0,2})?)(?:[\x60'"\s;]|\\[nr]|$)'''
+entropy = 3
+keywords = ["ey", "ai-gateway", "api-key"]
+
+[allowlist]
+description = "Global allowlist for false positives"
+
+# Ignore common false positives
+regexes = [
+    # Ignore example/template values
+    '''(?i)(example|sample|template|dummy|test|fake|mock)''',
+    # Ignore placeholder values
+    '''(?i)(your_|my_|insert_|replace_)''',
+    # Ignore UUIDs (not secrets)
+    '''[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}''',
+]
+
+# Paths to always ignore
+paths = [
+    # Lock files and dependencies
+    '''package-lock\.json''',
+    '''poetry\.lock''',
+    '''uv\.lock''',
+    '''Pipfile\.lock''',
+    '''yarn\.lock''',
+    '''pnpm-lock\.yaml''',
+
+    # Build and cache directories
+    '''\.venv/''',
+    '''venv/''',
+    '''node_modules/''',
+    '''__pycache__/''',
+    '''\.pytest_cache/''',
+    '''\.mypy_cache/''',
+    '''\.ruff_cache/''',
+    '''dist/''',
+    '''build/''',
+    '''\.egg-info/''',
+
+    # Example and template files (contain dummy secrets)
+    '''\.env\.example$''',
+    '''\.env\.template$''',
+    '''config\.example\.''',
+    '''config\.template\.''',
+
+    # Documentation
+    '''README\.md''',
+    '''CLAUDE\.md''',
+    '''\.github/.*\.md''',
+
+    # Test files (may contain test credentials)
+    '''test_.*\.py''',
+    '''.*_test\.py''',
+    '''.*/tests/.*''',
+    '''.*/test/.*''',
+
+    # Git and IDE
+    '''\.git/''',
+    '''\.idea/''',
+    '''\.vscode/''',
+]
+
+# Stop words to reduce false positives
+stopwords = [
+    "example",
+    "test",
+    "sample",
+    "dummy",
+    "fake",
+    "mock",
+    "template",
+]
