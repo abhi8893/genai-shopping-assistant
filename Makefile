@@ -113,6 +113,28 @@ endif
 .PHONY: venv-clean
 venv-clean:
 ifndef COMPONENT
-	$(error COMPONENT is required. Usage: make venv-clean COMPONENT=packages/shopping-assistant)
+	$(error COMPONENT is required. Usage: make venv-clean COMPONENT=packages/shopping-assistant [GROUP=dev|prod])
 endif
-	@python3 scripts/clean_venv.py --repo-root $(REPO_ROOT) --component $(COMPONENT)
+	@python3 scripts/clean_venv.py --repo-root $(REPO_ROOT) --component $(COMPONENT) $(if $(GROUP),--group $(GROUP),--clear-info)
+
+.PHONY: venv-create-all
+venv-create-all:
+	@echo "Creating virtual environments for all components..."
+	@for component in $$(python3 scripts/list_components.py --repo-root $(REPO_ROOT)); do \
+		echo ""; \
+		echo "==> Creating venv for $$component (GROUP=$(if $(GROUP),$(GROUP),prod))..."; \
+		$(MAKE) venv-create COMPONENT=$$component GROUP=$(if $(GROUP),$(GROUP),prod) || exit 1; \
+	done
+	@echo ""
+	@echo "✓ All virtual environments created successfully"
+
+.PHONY: venv-clean-all
+venv-clean-all:
+	@echo "Cleaning virtual environments for all components..."
+	@for component in $$(python3 scripts/list_components.py --repo-root $(REPO_ROOT)); do \
+		echo ""; \
+		echo "==> Cleaning venv for $$component$(if $(GROUP), (GROUP=$(GROUP)),)..."; \
+		python3 scripts/clean_venv.py --repo-root $(REPO_ROOT) --component $$component $(if $(GROUP),--group $(GROUP),--clear-info); \
+	done
+	@echo ""
+	@echo "✓ All virtual environments cleaned successfully"

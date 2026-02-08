@@ -2,13 +2,27 @@
 """Script to clean virtual environments for monorepo components."""
 
 import argparse
+import glob
+import json
+import os
 import shutil
 import sys
 from pathlib import Path
 
 
-def clean_venvs(repo_root: Path, component: str) -> int:
-    """Remove all .venv-* directories from the specified component."""
+# TODO: lol Claude led to a high cyclomatic complexity, need to refactor
+def clean_venvs(  # noqa: C901, PLR0912
+    repo_root: Path, component: str, group: str | None = None, clear_info: bool = False
+) -> int:
+    """Remove .venv-* directories from the specified component.
+
+    Args:
+        repo_root: Repository root directory
+        component: Component path relative to repo root
+        group: Specific venv group to clean (dev, prod, test, etc.).
+            If None, cleans all venvs.
+        clear_info: Whether to clear the .info.json file after cleaning
+    """
     component_path = repo_root / component
 
     if not component_path.exists():
@@ -17,21 +31,58 @@ def clean_venvs(repo_root: Path, component: str) -> int:
         )
         return 1
 
-    print(f"Cleaning virtual environments in {component}...")
+    # Determine which venvs to clean
+    if group:
+        if group == "dev":
+            venv_name = ".venv-dev"
+        elif group == "prod":
+            venv_name = ".venv-prod"
+        else:
+            venv_name = f".venv-{group}"
 
-    # Find and remove all .venv-* directories
-    venv_dirs = list(component_path.glob(".venv-*"))
+        print(f"Cleaning {venv_name} in {component}...")
+        venv_path = component_path / venv_name
 
-    if not venv_dirs:
-        print("No virtual environments found to clean")
-        return 0
+        if venv_path.exists() and venv_path.is_dir():
+            print(f"Removing {venv_name}...")
+            shutil.rmtree(venv_path)
+            print(f"✓ Cleaned {venv_name}")
+        else:
+            print(f"No {venv_name} found to clean")
+    else:
+        print(f"Cleaning all virtual environments in {component}...")
 
-    for venv_dir in venv_dirs:
-        if venv_dir.is_dir():
-            print(f"Removing {venv_dir.name}...")
-            shutil.rmtree(venv_dir)
+        # Find and remove all .venv-* directories
+        venv_dirs = list(component_path.glob(".venv-*"))
 
-    print(f"✓ Cleaned {len(venv_dirs)} virtual environment(s)")
+        if not venv_dirs:
+            print("No virtual environments found to clean")
+        else:
+            for venv_dir in venv_dirs:
+                if venv_dir.is_dir():
+                    print(f"Removing {venv_dir.name}...")
+                    shutil.rmtree(venv_dir)
+
+            print(f"✓ Cleaned {len(venv_dirs)} virtual environment(s)")
+
+    # Update .info.json to reflect current state
+    info_file = component_path / ".info.json"
+    if info_file.exists():
+        if clear_info:
+            # Clear all venv info
+            data = {"venv": {"options": [], "active": None}}
+        else:
+            # Update to reflect remaining venvs
+            venv_available = [
+                os.path.basename(f) for f in glob.glob(str(component_path / ".venv-*"))
+            ]
+            with open(info_file) as f:
+                data = json.load(f)
+            data["venv"]["options"] = sorted(venv_available)
+
+        with open(info_file, "w") as f:
+            json.dump(data, f, indent=4)
+        print(f"✓ Updated {info_file}")
 
     return 0
 
@@ -44,11 +95,21 @@ def main():
     parser.add_argument(
         "--component", required=True, help="Component path relative to repo root"
     )
+    parser.add_argument(
+        "--group",
+        help="Specific venv group to clean (dev, prod, test, etc.). "
+        "If not specified, cleans all venvs.",
+    )
+    parser.add_argument(
+        "--clear-info",
+        action="store_true",
+        help="Clear all venv info in .info.json (use with caution)",
+    )
 
     args = parser.parse_args()
 
     repo_root = Path(args.repo_root)
-    sys.exit(clean_venvs(repo_root, args.component))
+    sys.exit(clean_venvs(repo_root, args.component, args.group, args.clear_info))
 
 
 if __name__ == "__main__":
