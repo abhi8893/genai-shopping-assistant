@@ -53,7 +53,7 @@ def clean_venvs(  # noqa: C901, PLR0912
         print(f"Cleaning all virtual environments in {component}...")
 
         # Find and remove all .venv-* directories
-        venv_dirs = list(component_path.glob(".venv-*"))
+        venv_dirs = list(component_path.glob(".venv*"))
 
         if not venv_dirs:
             print("No virtual environments found to clean")

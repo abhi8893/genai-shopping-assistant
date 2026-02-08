@@ -138,3 +138,39 @@ venv-clean-all:
 	done
 	@echo ""
 	@echo "✓ All virtual environments cleaned successfully"
+
+.PHONY: venv-refresh
+venv-refresh:
+ifndef COMPONENT
+	$(error COMPONENT is required. Usage: make venv-refresh COMPONENT=packages/shopping-assistant [FIX=true])
+endif
+	@python3 scripts/refresh_info_json.py --repo-root $(REPO_ROOT) --component $(COMPONENT) $(if $(filter true,$(FIX)),--fix-active,)
+
+.PHONY: venv-refresh-all
+venv-refresh-all:
+	@echo "Refreshing .info.json for all components..."
+	@failed=0; \
+	for component in $$(python3 scripts/list_components.py --repo-root $(REPO_ROOT)); do \
+		echo ""; \
+		echo "==> Refreshing $$component..."; \
+		if ! python3 scripts/refresh_info_json.py --repo-root $(REPO_ROOT) --component $$component $(if $(filter true,$(FIX)),--fix-active,); then \
+			failed=$$((failed + 1)); \
+		fi; \
+	done; \
+	echo ""; \
+	if [ $$failed -eq 0 ]; then \
+		echo "✓ All .info.json files refreshed successfully"; \
+	else \
+		echo "⚠ $$failed component(s) had validation errors"; \
+		exit 1; \
+	fi
+
+.PHONY: venv-switch
+venv-switch:
+ifndef COMPONENT
+	$(error COMPONENT is required. Usage: make venv-switch COMPONENT=packages/shopping-assistant TARGET=dev)
+endif
+ifndef TARGET
+	$(error TARGET is required. Usage: make venv-switch COMPONENT=packages/shopping-assistant TARGET=dev)
+endif
+	@python3 scripts/switch_venv.py --repo-root $(REPO_ROOT) --component $(COMPONENT) --target $(TARGET)
