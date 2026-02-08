@@ -124,6 +124,10 @@ python app.py  # Runs Gradio app
 make ingest-products-vectordb
 ```
 
+## Virtual Environment Management
+
+Refer to `.claude/rules/venv-management.md` for detailed virtual environment management guidelines.
+
 ## GenAI Shopping Assistant: Multi-Agent Architecture
 
 The core **shopping-assistant** uses a multi-agent architecture defined in `packages/shopping-assistant/src/shopping_assistant/`:
