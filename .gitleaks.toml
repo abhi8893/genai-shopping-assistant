@@ -51,7 +51,7 @@ keywords = [
 [[rules]]
 id = "ai-gateway-url"
 description = "Detected AI Gateway URL configuration, which may expose API gateway routing information."
-regex = '''https://[a-z]+\.[-a-z0-9]+\.ai-gateway\.[a-f0-9-]{36}(?:/v[0-9]+)?'''
+regex = '''https://.+\.ai-gateway\..+'''
 keywords = ["ai-gateway", "base-url"]
 
 
