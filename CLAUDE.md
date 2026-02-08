@@ -62,6 +62,9 @@ make check-lint
 # Run formatting only (ruff-format)
 make check-format
 
+# Run secret scanning only (gitleaks)
+make check-secrets
+
 # Run a specific pre-commit hook
 make check-hook-<hook-name>
 ```
@@ -69,7 +72,9 @@ make check-hook-<hook-name>
 The repo uses `ruff` for linting and formatting (configured in `ruff.toml`). Pre-commit hooks are defined in `.pre-commit-config.yaml` and include:
 - Ruff linting with auto-fix
 - Ruff formatting
+- Secret scanning with gitleaks (configured in `.gitleaks.toml`)
 - YAML validation
+- GitHub Actions workflow validation (actionlint)
 - Trailing whitespace removal
 - End-of-file fixers
 - Merge conflict detection

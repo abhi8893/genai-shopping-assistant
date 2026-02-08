@@ -76,6 +76,13 @@ check-format:
 		pre-commit run ruff-format --all-files; \
 	fi
 
+check-secrets:
+	@if [ -n "$(FILE)" ]; then \
+		git ls-files -- $(FILE) | xargs pre-commit run gitleaks --files; \
+	else \
+		pre-commit run gitleaks --all-files; \
+	fi
+
 # Individual make target for each pre-commit hook
 check-hook-%:
 	@if [ -n "$(FILE)" ]; then \
