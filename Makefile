@@ -97,3 +97,44 @@ draw-repo-tree:
 
 remove-dangling-images:
 	docker images -f "dangling=true" -q | xargs -r docker rmi
+
+
+# ========================================
+# Virtual Environment Management
+# ========================================
+
+.PHONY: venv-create
+venv-create:
+ifndef COMPONENT
+	$(error COMPONENT is required. Usage: make venv-create COMPONENT=packages/shopping-assistant [GROUP=dev|prod])
+endif
+	@python3 scripts/create_venv.py --repo-root $(REPO_ROOT) --component $(COMPONENT) --group $(if $(GROUP),$(GROUP),prod)
+
+# Component-specific shortcuts
+.PHONY: venv-package-dev venv-package-prod
+venv-package-dev:
+	@$(MAKE) venv-create COMPONENT=packages/shopping-assistant GROUP=dev
+
+venv-package-prod:
+	@$(MAKE) venv-create COMPONENT=packages/shopping-assistant GROUP=prod
+
+.PHONY: venv-service-assistant-dev venv-service-assistant-prod
+venv-service-assistant-dev:
+	@$(MAKE) venv-create COMPONENT=services/shopping-assistant GROUP=dev
+
+venv-service-assistant-prod:
+	@$(MAKE) venv-create COMPONENT=services/shopping-assistant GROUP=prod
+
+.PHONY: venv-service-ecom-dev venv-service-ecom-prod
+venv-service-ecom-dev:
+	@$(MAKE) venv-create COMPONENT=services/ecom-backend GROUP=dev
+
+venv-service-ecom-prod:
+	@$(MAKE) venv-create COMPONENT=services/ecom-backend GROUP=prod
+
+.PHONY: venv-clean
+venv-clean:
+ifndef COMPONENT
+	$(error COMPONENT is required. Usage: make venv-clean COMPONENT=packages/shopping-assistant)
+endif
+	@python3 scripts/clean_venv.py --repo-root $(REPO_ROOT) --component $(COMPONENT)

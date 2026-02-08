@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "shopping-assistant-service"
+version = "0.1.0"
+
+requires-python = ">=3.12"
+
+dependencies = [
+    "shopping-assistant",
+    "python-dotenv",
+]
+
+[tool.uv.sources]
+shopping-assistant = { path = "../../packages/shopping-assistant" }
+
+[dependency-groups]
+dev = [
+    { include-group = "test" },
+]
+test = ["pytest", "pytest-cov"]
