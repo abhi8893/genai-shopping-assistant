@@ -1,7 +1,9 @@
 from typing import Literal
-from pydantic import BaseModel
-import shopping_assistant.config as module_config
+
 import openai
+from pydantic import BaseModel
+
+import shopping_assistant.config as module_config
 from shopping_assistant.graph.types import State
 
 
@@ -20,11 +22,15 @@ class RouterAgent:
     @staticmethod
     def _validate_config(config):
         downstream_routes_in_config = [d["name"] for d in config["downstream_routes"]]
-        assert set(downstream_routes_in_config) == set(
-            module_config.DOWNSTREAM_ROUTES
-        ), (
-            "Downstream routes in package config do not match downstream routes in the passed config"
+
+        expected_routes = set(module_config.DOWNSTREAM_ROUTES)
+        actual_routes = set(downstream_routes_in_config)
+        err_msg = (
+            "Downstream routes in package config do not match "
+            "the downstream routes in the passed config"
         )
+
+        assert actual_routes == expected_routes, err_msg
 
     @staticmethod
     def _get_downstream_routes_description_for_prompt(downstream_routes):
@@ -35,8 +41,8 @@ class RouterAgent:
         for idx, route in enumerate(downstream_routes):
             desc += f"\n(Route {idx + 1}) `{route['name']}`: {route['description']}"
             desc += "\nExamples:"
-            for idx, example in enumerate(route["examples"]):
-                desc += f"\n{idx + 1}: {example}"
+            for ex_idx, example in enumerate(route["examples"]):
+                desc += f"\n{ex_idx + 1}: {example}"
 
             desc += "\n\n"
 
@@ -53,13 +59,14 @@ class RouterAgent:
         return system_prompt
 
     def run(self, state: State) -> Literal[*module_config.DOWNSTREAM_ROUTES]:
+        route_final_instr_msg = {
+            "role": "user",
+            "content": f"Route based on this message: {state.messages[-1]['content']}",
+        }
         input_messages = [
             {"role": "system", "content": self.system_prompt},
             *state.messages[:-1],
-            {
-                "role": "user",
-                "content": f"Route based on this message: {state.messages[-1]['content']}",
-            },
+            route_final_instr_msg,
         ]
 
         response = self.openai_client.chat.completions.parse(

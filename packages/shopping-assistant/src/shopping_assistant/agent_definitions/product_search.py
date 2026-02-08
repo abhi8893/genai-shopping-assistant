@@ -1,9 +1,11 @@
-from langfuse import Langfuse, observe as langfuse_observe
+from langfuse import Langfuse
+from langfuse import observe as langfuse_observe
+from pydantic import BaseModel, Field
 from weaviate import WeaviateClient
+
 from shopping_assistant.graph.types import State
 from shopping_assistant.product_retrieval import retrieve_products
 from shopping_assistant.types import ProductVectorDBRecord
-from pydantic import BaseModel, Field
 
 try:
     from langfuse.openai import openai
@@ -29,13 +31,22 @@ class ProductParsedDetails(BaseModel):
 
 class ProductRetrievalAgentResponse(BaseModel):
     product_details: ProductParsedDetails | None = Field(
-        description="The parsed details of the product. Populate ONLY if no clarification response is needed."
+        description=(
+            "The parsed details of the product. "
+            "Populate ONLY if no clarification response is needed."
+        )
     )
     product_retrieval_query: str | None = Field(
-        description="User query rephrased as a specific retrieval query for the product. Populate ONLY if no clarification response is needed."
+        description=(
+            "User query rephrased as a specific retrieval query for the product. "
+            "Populate ONLY if no clarification response is needed."
+        )
     )
     product_clarification_response: str | None = Field(
-        description="The clarification response for the user's query when no product details were parsed."
+        description=(
+            "The clarification response for the user's query when "
+            "no product details were parsed."
+        )
     )
 
 
@@ -61,7 +72,10 @@ class ProductSearchAgent:
         products_retrieved: list[ProductVectorDBRecord],
     ) -> str:
         if not products_retrieved:
-            asst_response = "I found no products based on your query. Can you please rephrase your query?"
+            asst_response = (
+                "I found no products based on your query. "
+                "Can you please rephrase your query?"
+            )
         else:
             product_list_prompt_str = get_product_list_prompt_str(products_retrieved)
 
@@ -102,13 +116,12 @@ class ProductSearchAgent:
         prod_retrieval_agent_response = response.choices[0].message.parsed
 
         if prod_retrieval_agent_response.product_clarification_response:
+            asst_message = {
+                "role": "assistant",
+                "content": prod_retrieval_agent_response.product_clarification_response,
+            }
             new_state = State(
-                messages=[
-                    {
-                        "role": "assistant",
-                        "content": prod_retrieval_agent_response.product_clarification_response,
-                    }
-                ],
+                messages=[asst_message],
                 prev_recommended_products=state.prev_recommended_products,
             )
 

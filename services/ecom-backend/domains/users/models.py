@@ -1,9 +1,8 @@
 from core.database import Base
-from sqlalchemy import Column, Integer, String, Enum
-from sqlalchemy.sql.sqltypes import TIMESTAMP
-from sqlalchemy.sql.expression import text
+from sqlalchemy import Column, Enum, Integer, String
 from sqlalchemy.orm import relationship
-
+from sqlalchemy.sql.expression import text
+from sqlalchemy.sql.sqltypes import TIMESTAMP
 
 __all__ = ("UserDB",)
 

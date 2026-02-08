@@ -1,13 +1,14 @@
+from core.exceptions import ValidationException
 from fastapi import APIRouter, Depends, Query
-from domains.products.service import ProductService
-from domains.products.schemas import ProductData
+
 from domains.products.api.dependencies import get_product_service
+from domains.products.schemas import ProductData
+from domains.products.service import ProductService
 from domains.products.types import (
-    ProductHierarchyFilter,
     EmptyProductHierarchyFilterError,
     MultipleProductHierarchyFilterError,
+    ProductHierarchyFilter,
 )
-from core.exceptions import ValidationException
 
 router = APIRouter(tags=["products"], prefix="/products")
 
@@ -22,7 +23,7 @@ def get_all_products(
 
 
 @router.get("/search", response_model=list[ProductData])
-def search(
+def search(  # noqa: PLR0913
     category_id: int | None = Query(None),
     subcategory_id: int | None = Query(None),
     product_id: int | None = Query(None),
@@ -46,7 +47,7 @@ def search(
     except EmptyProductHierarchyFilterError:
         hier_filter = None
     except MultipleProductHierarchyFilterError as e:
-        raise ValidationException(str(e))
+        raise ValidationException(str(e)) from e
     return service.search(page, limit, hier_filter, keywords=keywords)
 
 

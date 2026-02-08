@@ -1,7 +1,9 @@
-from sqlalchemy.orm import Session
-from domains.carts.models import CartDB, CartItemDB
-from core.exceptions import ResourceNotFoundException
 from abc import ABC, abstractmethod
+
+from core.exceptions import ResourceNotFoundException
+from sqlalchemy.orm import Session
+
+from domains.carts.models import CartDB, CartItemDB
 
 
 class CartRepository(ABC):
@@ -48,7 +50,7 @@ class SQLAlchemyCartRepository(CartRepository):
             raise ResourceNotFoundException(f"Cart not found for cart_id {cart_id}")
         return cart
 
-    def create(self, cart: CartDB, user_id: int) -> CartDB:
+    def create(self, cart: CartDB) -> CartDB:
         self.db.add(cart)
         self.db.commit()
         self.db.refresh(cart)

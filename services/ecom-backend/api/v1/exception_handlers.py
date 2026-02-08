@@ -1,11 +1,12 @@
+from core.exceptions import BaseAppException
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
-from core.exceptions import BaseAppException
 
 # NOTE: Ref: https://medium.com/delivus/exception-handling-best-practices-in-python-a-fastapi-perspective-98ede2256870
 
 
-def app_exception_handler(request: Request, exc: BaseAppException):
+# TODO: ARG001 Unused function argument: `request`
+def app_exception_handler(request: Request, exc: BaseAppException):  # noqa: ARG001
     return JSONResponse(
         status_code=exc.status_code,
         content={
@@ -16,7 +17,8 @@ def app_exception_handler(request: Request, exc: BaseAppException):
     )
 
 
-def uncaught_exception_handler(request: Request, exc: Exception):
+# TODO: ARG001 Unused function argument: `request`
+def uncaught_exception_handler(request: Request, exc: Exception):  # noqa: ARG001
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={

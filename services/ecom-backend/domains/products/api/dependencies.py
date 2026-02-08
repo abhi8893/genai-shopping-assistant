@@ -1,8 +1,9 @@
 from core.database import get_db
 from fastapi import Depends
+from sqlalchemy.orm import Session
+
 from domains.products.repository import SQLAlchemyProductRepository
 from domains.products.service import ProductService
-from sqlalchemy.orm import Session
 
 
 def get_sqlalchemy_product_repo(

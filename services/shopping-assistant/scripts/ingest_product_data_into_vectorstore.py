@@ -1,12 +1,13 @@
 import argparse
 import logging
+import os
+
+import pandas as pd
+import sqlalchemy
 import weaviate
 import weaviate.classes as wvc
-import os
-import sqlalchemy
-from shopping_assistant.product_retrieval import WeaviateConnectionManager
-import pandas as pd
 from dotenv import load_dotenv
+from shopping_assistant.product_retrieval import WeaviateConnectionManager
 
 # TODO: Adhoc, change env for weaviate in the file
 load_dotenv("platform/app/.env")
@@ -117,7 +118,7 @@ with WeaviateConnectionManager(client=weaviate_client) as weaviate_client_connec
         "Ingesting %s records into collection: %s", len(df), VECTOR_DB_COLLECTION_NAME
     )
     with products.batch.fixed_size(batch_size=WEAVIATE_INGESTION_BATCH_SIZE) as batch:
-        for idx, row in df[PRODUCT_DATA_FIELDS].iterrows():
+        for _idx, row in df[PRODUCT_DATA_FIELDS].iterrows():
             rec = row.to_dict()
             batch.add_object(properties=rec)
 

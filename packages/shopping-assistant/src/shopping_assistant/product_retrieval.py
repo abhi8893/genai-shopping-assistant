@@ -1,8 +1,9 @@
-from weaviate import WeaviateClient
-import weaviate.classes as wvc
 import functools
+
 import weaviate
+import weaviate.classes as wvc
 from langfuse import observe as langfuse_observe
+from weaviate import WeaviateClient
 
 
 class WeaviateConnectionManager:
@@ -38,7 +39,7 @@ def _retrieve_products_client(
 
 
 @langfuse_observe(name="retrieve-products", as_type="retriever")
-def retrieve_products(
+def retrieve_products(  # noqa: PLR0913
     query: str = None,
     categories: list[str] = None,
     subcategories: list[str] = None,
@@ -47,10 +48,7 @@ def retrieve_products(
     n: int = 5,
     weaviate_client: WeaviateClient = None,
 ):
-    """
-    Retrieve products from the catalog based on the given query and filters.
-    """
-
+    """Retrieve products from the catalog based on the given query and filters."""
     filters = []
 
     if categories:
@@ -80,9 +78,9 @@ def retrieve_products(
         filter_obj = None
 
     if weaviate_client is None:
-        with weaviate.connect_to_local() as weaviate_client:
+        with weaviate.connect_to_local() as weaviate_client_connected:
             product_retrieval_response = _retrieve_products_client(
-                weaviate_client=weaviate_client,
+                weaviate_client=weaviate_client_connected,
                 filter_obj=filter_obj,
                 query=query,
                 n=n,

@@ -1,7 +1,8 @@
 from core.database import get_db
 from fastapi import Depends
-from domains.carts.repository import SQLAlchemyCartRepository
 from sqlalchemy.orm import Session
+
+from domains.carts.repository import SQLAlchemyCartRepository
 from domains.carts.service import CartService
 from domains.products.repository import SQLAlchemyProductRepository
 from domains.products.service import ProductService

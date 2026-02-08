@@ -1,13 +1,14 @@
+import langgraph.typing as lg_ty
+from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.graph import END, START, StateGraph
+from langgraph.graph.state import CompiledStateGraph
+
 from shopping_assistant.agent_definitions import (
-    RouterAgent,
-    ShoppingActionsAgent,
     CustomerServiceAgent,
     ProductSearchAgent,
+    RouterAgent,
+    ShoppingActionsAgent,
 )
-from langgraph.graph import StateGraph, START, END
-from langgraph.checkpoint.memory import InMemorySaver
-from langgraph.graph.state import CompiledStateGraph
-import langgraph.typing as lg_ty
 from shopping_assistant.graph.types import State
 
 
@@ -16,7 +17,7 @@ def build_graph(
     shopping_actions_agent: ShoppingActionsAgent,
     customer_service_agent: CustomerServiceAgent,
     product_search_agent: ProductSearchAgent,
-    memory: InMemorySaver = InMemorySaver(),
+    memory: InMemorySaver = InMemorySaver(),  # noqa: B008
 ) -> CompiledStateGraph[lg_ty.StateT, lg_ty.ContextT, lg_ty.InputT, lg_ty.OutputT]:
     graph_builder = StateGraph(State)
 

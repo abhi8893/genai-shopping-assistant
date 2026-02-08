@@ -4,9 +4,10 @@ import argparse
 import logging
 import os
 import sys
-import pandas as pd
-from sqlalchemy import create_engine, text as sql_text
 
+import pandas as pd
+from sqlalchemy import create_engine
+from sqlalchemy import text as sql_text
 
 # NOTE: Crafted by a Human, Refactored by an AI.
 # NOTE: Sometimes, not so good an idea.
@@ -114,8 +115,8 @@ def execute_sql_script(conn, sql_script):
             conn.execute(sql_text(statement))
             conn.commit()
         except Exception as e:
-            logger.error(f"Error executing SQL: {statement}")
-            logger.error(f"Error details: {str(e)}")
+            logger.error("Error executing SQL: %s", statement)
+            logger.error("Error details: %s", str(e))
             conn.rollback()
             raise
 

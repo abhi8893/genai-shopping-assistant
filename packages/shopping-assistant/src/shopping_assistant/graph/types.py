@@ -1,7 +1,9 @@
-from pydantic import BaseModel, Field
 from typing import Annotated
-from shopping_assistant.graph.utils import add_messages_openai
+
+from pydantic import BaseModel, Field
+
 import shopping_assistant.config as module_config
+from shopping_assistant.graph.utils import add_messages_openai
 from shopping_assistant.types import ProductVectorDBRecord
 
 

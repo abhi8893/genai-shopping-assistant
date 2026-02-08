@@ -1,10 +1,11 @@
+import pydantic
 import requests
+
 from shopping_assistant.external.ecom_api_client.credentials import Credentials
 from shopping_assistant.external.ecom_api_client.exceptions import (
     ApiError,
     ExceptionResponse,
 )
-import pydantic
 
 
 class HttpClient:
@@ -31,8 +32,9 @@ class HttpClient:
 
         response_json = response_obj.json()
 
-        if isinstance(response_json, dict):
-            # TODO: Temp way of differentiating between routes not found and other resource not found errors (since both have 404 status code)
+        if isinstance(response_json, dict):  # noqa: SIM102
+            # TODO: Temp way of differentiating between routes not found and
+            # other resource not found errors (since both have 404 status code)
             # TODO: Must standardize API response from server side
             if response_json.get("error_code", "") == "NOT_FOUND":
                 raise ApiError(
@@ -42,7 +44,8 @@ class HttpClient:
                 )
 
         try:
-            # Check if response is an API error (TODO: Must standardize API response from server side)
+            # Check if response is an API error
+            # (TODO: Must standardize API response from server side)
             response = ExceptionResponse.model_validate(response_json)
             if raise_error:
                 raise ApiError(response)

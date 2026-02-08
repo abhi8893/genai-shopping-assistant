@@ -54,18 +54,35 @@ ingest-products-vectordb:
 	--sqlite-db-path "ecom-backend/ecom_backend.db"
 
 
+# Pre-commit targets with conditional FILE handling
 check-all:
-	pre-commit run --all-files $(if $(FILE),$(FILE),)
+	@if [ -n "$(FILE)" ]; then \
+		git ls-files -- $(FILE) | xargs pre-commit run --files; \
+	else \
+		pre-commit run --all-files; \
+	fi
 
 check-lint:
-	pre-commit run ruff --all-files $(if $(FILE),$(FILE),)
+	@if [ -n "$(FILE)" ]; then \
+		git ls-files -- $(FILE) | xargs pre-commit run ruff --files; \
+	else \
+		pre-commit run ruff --all-files; \
+	fi
 
 check-format:
-	pre-commit run ruff-format --all-files $(if $(FILE),$(FILE),)
+	@if [ -n "$(FILE)" ]; then \
+		git ls-files -- $(FILE) | xargs pre-commit run ruff-format --files; \
+	else \
+		pre-commit run ruff-format --all-files; \
+	fi
 
 # Individual make target for each pre-commit hook
 check-hook-%:
-	pre-commit run --hook-stage manual $* $(if $(FILE),$(FILE),--all-files)
+	@if [ -n "$(FILE)" ]; then \
+		git ls-files -- $(FILE) | xargs pre-commit run --hook-stage manual $* --files; \
+	else \
+		pre-commit run --hook-stage manual $* --all-files; \
+	fi
 
 # TODO: Refine draw repo tree target
 draw-repo-tree:
