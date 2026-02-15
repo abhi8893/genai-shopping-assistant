@@ -14,7 +14,12 @@ class CartService:
         self.product_service = product_service
 
     def get_all(self, user_id: int, page: int, limit: int) -> list[CartData]:
-        carts_db = self.repo.get_all(user_id, page, limit)
+        try:
+            carts_db = self.repo.get_all(user_id, page, limit)
+        except ResourceNotFoundException:
+            new_cart_db = self.repo.create(CartDB(user_id=user_id, amount=0))
+            carts_db = [new_cart_db]
+
         return [CartData.model_validate(cart_db) for cart_db in carts_db]
 
     def get(self, cart_id: int) -> CartData:
