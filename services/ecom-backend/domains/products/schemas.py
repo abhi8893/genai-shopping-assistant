@@ -1,4 +1,4 @@
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, ConfigDict, model_validator
 
 # Input Schemas
 
@@ -12,8 +12,7 @@ class ProductCreate(BaseModel):
     category_id: int
     subcategory_id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ProductUpdate(BaseModel):
@@ -24,8 +23,7 @@ class ProductUpdate(BaseModel):
     category_id: int | None = None
     subcategory_id: int | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
     # validate that atleast one is not None
     @model_validator(mode="after")
@@ -47,5 +45,4 @@ class ProductData(BaseModel):
     category_id: int
     subcategory_id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

@@ -1,28 +1,25 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class CartItemCreate(BaseModel):
     product_id: int
     quantity: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CartCreateBody(BaseModel):
     cart_items: list[CartItemCreate]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CartUpdateBody(BaseModel):
     cart_items: list[CartItemCreate]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CartItemData(BaseModel):
@@ -31,8 +28,7 @@ class CartItemData(BaseModel):
     quantity: int
     amount: float
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CartResponse(BaseModel):
@@ -41,5 +37,4 @@ class CartResponse(BaseModel):
     created_at: datetime
     cart_items: list[CartItemData]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
