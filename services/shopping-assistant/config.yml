@@ -2,7 +2,12 @@ agents:
   router:
     downstream_routes:
       - name: product_search
-        description: Helps the user find products in the catalog based on the product name or description.
+        description: |
+          Helps the user find products in the catalog based on the product name or description.
+          Will appear as follows if it has responded to the user's query previously:
+          ```
+          Product Search Agent: ...
+          ```
         examples:
           - I am looking for headphones under 2000 rupees.
           - Do you have wind cheaters in red and white colour?
@@ -10,8 +15,13 @@ agents:
           - Can you give me some options for phones with good camera?
 
       - name: shopping_actions
-        description: Helps the user perform shopping actions such as shoppingcart interaction,
-            order placement, checkout, cancellation etc
+        description: |
+          Helps the user perform shopping actions such as shoppingcart interaction,
+          order placement, checkout, cancellation etc
+          Will appear as follows if it has responded to the user's query previously:
+          ```
+          Shopping Actions Agent: ...
+          ```
         examples:
           - Can you add this to the cart?
           - Please update the quantity of hdmi cables to 2.
@@ -20,7 +30,12 @@ agents:
           - Can you take me to the checkout page?
         
       - name: customer_service
-        description: Helps the user with any customer service related queries or any general chit chat.
+        description: |
+          Helps the user with any customer service related queries or any general chit chat.
+          Will appear as follows if it has responded to the user's query previously:
+          ```
+          Customer Service Agent: ...
+          ```
         examples:
           - Hello!
           - I have a complaint regarding a recent product I ordered.
@@ -30,8 +45,16 @@ agents:
     prompts:
       system_prompt: |
         You are a helpful ecom shopping assistant tasked with redirecting the user to the appropriate specialized downstream routes. 
+        Analyze the provided conversation history with the user to re-examine if you are the right agent to answer the user's query.
+        You will be provided with a conversation history where each message will clearly mention which agent has handled the user's query as follows:
+
+        ```
+        <agent_alias> Agent: ...
+        ```
+        Use this to enhance your understanding of the user's query and determine the appropriate downstream route.
+
         {downstream_routes_desc}
-        
+
         Please respond ONLY with the name of the appropriate downstream route based on the user's query.
     
     llm: gpt-4o-mini
