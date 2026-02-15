@@ -3,7 +3,7 @@ from fastapi import status
 
 # TODO: N818 Exception name `BaseAppException` should be named with an Error suffix
 class BaseAppException(Exception):  # noqa: N818
-    def _1_init__(
+    def __init__(
         self, message: str, status_code: int = status.HTTP_500_INTERNAL_SERVER_ERROR
     ):
         self.message = message
