@@ -1,6 +1,7 @@
 .PHONY: all 
 
 REPO_ROOT := $(abspath $(PWD))
+export DOCKER_BUILDKIT=1
 export REPO_ROOT
 
 APP_COMPOSE=platform/app/docker-compose.yml
@@ -23,6 +24,9 @@ langfuse-prod:
 		up -d
 
 
+# Example usage: make app-dev SERVICES=shopping-assistant ecom-backend
+# $(if $(SERVICES),up --build -d --scale $(SERVICES)=0,$(if $(BUILD),build,$(if $(UP),up -d --build,$(error Please specify either BUILD, UP or SERVICES))))
+
 app-dev:
 	docker compose \
 		--env-file platform/app/.env \
@@ -31,7 +35,6 @@ app-dev:
 		-f $(APP_COMPOSE) \
 		-f $(APP_COMPOSE_DEV) \
 		up --build -d
-
 
 app-prod:
 	docker compose \
@@ -97,3 +100,80 @@ draw-repo-tree:
 
 remove-dangling-images:
 	docker images -f "dangling=true" -q | xargs -r docker rmi
+
+
+# ========================================
+# Virtual Environment Management
+# ========================================
+
+.PHONY: venv-create
+venv-create:
+ifndef COMPONENT
+	$(error COMPONENT is required. Usage: make venv-create COMPONENT=packages/shopping-assistant [GROUP=dev|prod])
+endif
+	@python3 scripts/create_venv.py --repo-root $(REPO_ROOT) --component $(COMPONENT) --group $(if $(GROUP),$(GROUP),prod)
+
+.PHONY: venv-clean
+venv-clean:
+ifndef COMPONENT
+	$(error COMPONENT is required. Usage: make venv-clean COMPONENT=packages/shopping-assistant [GROUP=dev|prod])
+endif
+	@python3 scripts/clean_venv.py --repo-root $(REPO_ROOT) --component $(COMPONENT) $(if $(GROUP),--group $(GROUP),--clear-info)
+
+.PHONY: venv-create-all
+venv-create-all:
+	@echo "Creating virtual environments for all components..."
+	@for component in $$(python3 scripts/list_components.py --repo-root $(REPO_ROOT)); do \
+		echo ""; \
+		echo "==> Creating venv for $$component (GROUP=$(if $(GROUP),$(GROUP),prod))..."; \
+		$(MAKE) venv-create COMPONENT=$$component GROUP=$(if $(GROUP),$(GROUP),prod) || exit 1; \
+	done
+	@echo ""
+	@echo "✓ All virtual environments created successfully"
+
+.PHONY: venv-clean-all
+venv-clean-all:
+	@echo "Cleaning virtual environments for all components..."
+	@for component in $$(python3 scripts/list_components.py --repo-root $(REPO_ROOT)); do \
+		echo ""; \
+		echo "==> Cleaning venv for $$component$(if $(GROUP), (GROUP=$(GROUP)),)..."; \
+		python3 scripts/clean_venv.py --repo-root $(REPO_ROOT) --component $$component $(if $(GROUP),--group $(GROUP),--clear-info); \
+	done
+	@echo ""
+	@echo "✓ All virtual environments cleaned successfully"
+
+.PHONY: venv-refresh
+venv-refresh:
+ifndef COMPONENT
+	$(error COMPONENT is required. Usage: make venv-refresh COMPONENT=packages/shopping-assistant [FIX=true])
+endif
+	@python3 scripts/refresh_info_json.py --repo-root $(REPO_ROOT) --component $(COMPONENT) $(if $(filter true,$(FIX)),--fix-active,)
+
+.PHONY: venv-refresh-all
+venv-refresh-all:
+	@echo "Refreshing .info.json for all components..."
+	@failed=0; \
+	for component in $$(python3 scripts/list_components.py --repo-root $(REPO_ROOT)); do \
+		echo ""; \
+		echo "==> Refreshing $$component..."; \
+		if ! python3 scripts/refresh_info_json.py --repo-root $(REPO_ROOT) --component $$component $(if $(filter true,$(FIX)),--fix-active,); then \
+			failed=$$((failed + 1)); \
+		fi; \
+	done; \
+	echo ""; \
+	if [ $$failed -eq 0 ]; then \
+		echo "✓ All .info.json files refreshed successfully"; \
+	else \
+		echo "⚠ $$failed component(s) had validation errors"; \
+		exit 1; \
+	fi
+
+.PHONY: venv-switch
+venv-switch:
+ifndef COMPONENT
+	$(error COMPONENT is required. Usage: make venv-switch COMPONENT=packages/shopping-assistant TARGET=dev)
+endif
+ifndef TARGET
+	$(error TARGET is required. Usage: make venv-switch COMPONENT=packages/shopping-assistant TARGET=dev)
+endif
+	@python3 scripts/switch_venv.py --repo-root $(REPO_ROOT) --component $(COMPONENT) --target $(TARGET)

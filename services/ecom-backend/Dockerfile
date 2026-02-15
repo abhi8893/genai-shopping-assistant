@@ -22,24 +22,27 @@ ENV PATH="/root/.local/bin/:$PATH"
 
 FROM base AS dev
 
-COPY services/ecom-backend/requirements.txt service/requirements.txt
+COPY services/ecom-backend/pyproject.toml /project/services/ecom-backend/pyproject.toml
 
-RUN uv pip install --system --no-cache-dir -r service/requirements.txt
+WORKDIR /project/services/ecom-backend
+
+RUN uv pip install --system --no-cache-dir -e . --group dev
 
 EXPOSE 8000
 
-WORKDIR /project/service
 
 CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
 FROM base AS prod
 
-COPY services/ecom-backend/requirements.txt service/requirements.txt
+COPY services/ecom-backend/pyproject.toml /project/services/ecom-backend/pyproject.toml
 
-RUN uv pip install --system --no-cache-dir -r service/requirements.txt
+WORKDIR /project/services/ecom-backend
 
-COPY services/ecom-backend service/
+RUN uv pip install --system --no-cache-dir .
 
-WORKDIR /project/service
+COPY services/ecom-backend /project/services/ecom-backend
+
+
 
 CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]

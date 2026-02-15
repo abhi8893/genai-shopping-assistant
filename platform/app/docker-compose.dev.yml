@@ -5,7 +5,7 @@ services:
       target: dev
     image: shopping-assistant:dev
     volumes:
-      - ${REPO_ROOT}/services/shopping-assistant:/project/service
+      - ${REPO_ROOT}/services/shopping-assistant:/project/services/shopping-assistant
       - ${REPO_ROOT}/packages/shopping-assistant:/project/packages/shopping-assistant
 
 
@@ -14,4 +14,4 @@ services:
       target: dev
     image: ecom-backend:dev
     volumes:
-      - ${REPO_ROOT}/services/ecom-backend:/project/service
+      - ${REPO_ROOT}/services/ecom-backend:/project/services/ecom-backend
