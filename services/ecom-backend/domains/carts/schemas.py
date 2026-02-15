@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 # TODO: Keeping the service layer schemas and API layer schemas same (for now).
 # Need to add clear separation later (Add api/schemas.py => request/response objects)
@@ -14,22 +14,19 @@ class CartItemCreate(BaseModel):
     product_id: int
     quantity: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CartCreate(BaseModel):
     cart_items: list[CartItemCreate]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CartUpdate(BaseModel):
     cart_items: list[CartItemCreate]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Output Schemas
@@ -41,8 +38,7 @@ class CartItemData(BaseModel):
     quantity: int
     amount: float
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CartData(BaseModel):
@@ -51,5 +47,4 @@ class CartData(BaseModel):
     created_at: datetime
     cart_items: list[CartItemData]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

@@ -11,5 +11,9 @@ class State(BaseModel):
     messages: Annotated[list, add_messages_openai]
     prev_recommended_products: list[ProductVectorDBRecord] | None = None
     last_response_agent: str | None = Field(
-        default=None, choices=module_config.DOWNSTREAM_ROUTES, optional=True
+        default=None,
+        json_schema_extra={
+            "optional": True,
+            "choices": module_config.DOWNSTREAM_ROUTES,
+        },
     )
