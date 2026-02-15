@@ -1,6 +1,7 @@
 .PHONY: all 
 
 REPO_ROOT := $(abspath $(PWD))
+export DOCKER_BUILDKIT=1
 export REPO_ROOT
 
 APP_COMPOSE=platform/app/docker-compose.yml
@@ -23,6 +24,9 @@ langfuse-prod:
 		up -d
 
 
+# Example usage: make app-dev SERVICES=shopping-assistant ecom-backend
+# $(if $(SERVICES),up --build -d --scale $(SERVICES)=0,$(if $(BUILD),build,$(if $(UP),up -d --build,$(error Please specify either BUILD, UP or SERVICES))))
+
 app-dev:
 	docker compose \
 		--env-file platform/app/.env \
@@ -31,7 +35,6 @@ app-dev:
 		-f $(APP_COMPOSE) \
 		-f $(APP_COMPOSE_DEV) \
 		up --build -d
-
 
 app-prod:
 	docker compose \
