@@ -61,7 +61,7 @@ class RouterAgent:
     def run(self, state: State) -> Literal[*module_config.DOWNSTREAM_ROUTES]:
         route_final_instr_msg = {
             "role": "user",
-            "content": f"Route based on this message: {state.messages[-1]['content']}",
+            "content": state.messages[-1]["content"],
         }
         input_messages = [
             {"role": "system", "content": self.system_prompt},
