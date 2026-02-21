@@ -167,7 +167,7 @@ class Cart:
         )
         return self
 
-
+    # TODO: Refactor later from native `CartsAPI` functionality
     def get_total(self):
         cart = self.api_client.carts.get_cart(self._cart_id)
         total = 0
