@@ -64,7 +64,11 @@ class ShoppingActionsAgent:
 
         @function_tool
         def view_cart() -> dict:
-            """View user's cart"""
+            """
+            View user's cart and get total cart value.
+            DO NOT call `get_cart_total` after this as
+            you can get cart total from this function.
+            """
             return self.cart.view_cart()
 
         @function_tool
@@ -81,7 +85,10 @@ class ShoppingActionsAgent:
 
         @function_tool
         def get_cart_total() -> str:
-            """Get the total price of items in the cart"""
+            """
+            Get total cart value.
+            DO NOT call this function if you have already decided to call `view_cart`.
+            """
             total = round(self.cart.get_total(), 2)
             return f"Total: ${total}"
 
