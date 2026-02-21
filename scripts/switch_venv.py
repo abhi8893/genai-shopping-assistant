@@ -50,6 +50,16 @@ def switch_venv(repo_root: Path, component: str, target_venv: str) -> int:  # no
 
     current_active = data["venv"].get("active")
 
+    # Check if already active — must come before the existence check because when a
+    # venv is active its directory has been renamed to .venv, so target_venv_path
+    # won't exist as a physical directory.
+    if current_active == target_venv:
+        if default_venv.exists():
+            print(f"✓ {target_venv} is already the active venv, nothing to do")
+            return 0
+        print(f"⚠ {target_venv} is marked as active in .info.json but .venv is missing")
+        print("  Proceeding with switch to repair state...")
+
     # Check if target venv exists
     if not target_venv_path.exists():
         print(
@@ -73,14 +83,6 @@ def switch_venv(repo_root: Path, component: str, target_venv: str) -> int:  # no
             )
 
         return 1
-
-    # Check if already active
-    if current_active == target_venv:
-        if default_venv.exists() and not target_venv_path.exists():
-            print(f"✓ {target_venv} is already active")
-            return 0
-        print(f"⚠ {target_venv} is marked as active but not properly switched")
-        print("  Proceeding with switch...")
 
     print(f"Switching to {target_venv} in {component}...")
 
