@@ -79,18 +79,28 @@ class ShoppingActionsAgent:
             self.cart.empty_item(product_slug)
             return f"Cart updated successfully. Current Cart: {self.cart.view_cart()}"
 
+        @function_tool
+        def get_cart_total() -> str:
+            """Get the total price of items in the cart"""
+            total = round(self.cart.get_total(), 2)
+            return f"Total: ${total}"
+
         return [
             add_to_cart,
             remove_from_cart,
             view_cart,
             empty_cart,
             empty_item_from_cart,
+            get_cart_total,
         ]
 
     def _define_agent_actions(self, tool_store: dict[str, list[FunctionTool]]) -> dict:
         agent_actions = {
             "cart": {
-                "summary": "Manage your shopping cart (add or remove items, view cart)",
+                "summary": (
+                    "Manage your shopping cart (add or remove items, "
+                    "view cart, get total)"
+                ),
                 "tools": tool_store["cart"],
             }
         }

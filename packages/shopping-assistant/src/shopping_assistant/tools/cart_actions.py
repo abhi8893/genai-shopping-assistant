@@ -166,3 +166,12 @@ class Cart:
             cart_id=self._cart_id
         )
         return self
+
+
+    def get_total(self):
+        cart = self.api_client.carts.get_cart(self._cart_id)
+        total = 0
+
+        for ci in cart.cart_items:
+            total += ci.amount
+        return total
