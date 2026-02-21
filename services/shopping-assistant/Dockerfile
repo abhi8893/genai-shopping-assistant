@@ -36,6 +36,10 @@ WORKDIR /project/services/shopping-assistant
 # ---- Install deps + editable install ----
 RUN uv pip install --system --no-cache-dir \
     -e /project/services/shopping-assistant/ --group dev
+
+# TODO: Better way to do editable install
+RUN uv pip install --system --no-cache-dir \
+    -e /project/packages/shopping-assistant/ --group dev
     
 EXPOSE 8010
 
