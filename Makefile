@@ -113,6 +113,9 @@ ifndef COMPONENT
 	$(error COMPONENT is required. Usage: make venv-create COMPONENT=packages/shopping-assistant [GROUP=dev|prod])
 endif
 	@python3 scripts/create_venv.py --repo-root $(REPO_ROOT) --component $(COMPONENT) --group $(if $(GROUP),$(GROUP),prod)
+	@echo ""
+	@echo "----------------------------------------"
+	@$(MAKE) -s venv-get-active
 
 .PHONY: venv-clean
 venv-clean:
@@ -120,6 +123,9 @@ ifndef COMPONENT
 	$(error COMPONENT is required. Usage: make venv-clean COMPONENT=packages/shopping-assistant [GROUP=dev|prod])
 endif
 	@python3 scripts/clean_venv.py --repo-root $(REPO_ROOT) --component $(COMPONENT) $(if $(GROUP),--group $(GROUP),--clear-info)
+	@echo ""
+	@echo "----------------------------------------"
+	@$(MAKE) -s venv-get-active
 
 .PHONY: venv-create-all
 venv-create-all:
@@ -131,6 +137,9 @@ venv-create-all:
 	done
 	@echo ""
 	@echo "✓ All virtual environments created successfully"
+	@echo ""
+	@echo "----------------------------------------"
+	@$(MAKE) -s venv-get-active
 
 .PHONY: venv-clean-all
 venv-clean-all:
@@ -142,6 +151,9 @@ venv-clean-all:
 	done
 	@echo ""
 	@echo "✓ All virtual environments cleaned successfully"
+	@echo ""
+	@echo "----------------------------------------"
+	@$(MAKE) -s venv-get-active
 
 .PHONY: venv-refresh
 venv-refresh:
@@ -149,6 +161,9 @@ ifndef COMPONENT
 	$(error COMPONENT is required. Usage: make venv-refresh COMPONENT=packages/shopping-assistant [FIX=true])
 endif
 	@python3 scripts/refresh_info_json.py --repo-root $(REPO_ROOT) --component $(COMPONENT) $(if $(filter true,$(FIX)),--fix-active,)
+	@echo ""
+	@echo "----------------------------------------"
+	@$(MAKE) -s venv-get-active
 
 .PHONY: venv-refresh-all
 venv-refresh-all:
@@ -168,6 +183,9 @@ venv-refresh-all:
 		echo "⚠ $$failed component(s) had validation errors"; \
 		exit 1; \
 	fi
+	@echo ""
+	@echo "----------------------------------------"
+	@$(MAKE) -s venv-get-active
 
 .PHONY: venv-get-active venv-switch-all
 venv-get-active:
@@ -185,6 +203,9 @@ endif
 	done
 	@echo ""
 	@echo "✓ All virtual environments switched to $(TARGET) successfully"
+	@echo ""
+	@echo "----------------------------------------"
+	@$(MAKE) -s venv-get-active
 
 .PHONY: venv-switch
 venv-switch:
@@ -195,3 +216,6 @@ ifndef TARGET
 	$(error TARGET is required. Usage: make venv-switch COMPONENT=packages/shopping-assistant TARGET=dev)
 endif
 	@python3 scripts/switch_venv.py --repo-root $(REPO_ROOT) --component $(COMPONENT) --target $(TARGET)
+	@echo ""
+	@echo "----------------------------------------"
+	@$(MAKE) -s venv-get-active
