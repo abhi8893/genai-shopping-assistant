@@ -1,4 +1,5 @@
-.PHONY: all 
+.PHONY: all venv-switch-all
+
 
 REPO_ROOT := $(abspath $(PWD))
 export DOCKER_BUILDKIT=1
@@ -168,9 +169,22 @@ venv-refresh-all:
 		exit 1; \
 	fi
 
-.PHONY: venv-get-active
+.PHONY: venv-get-active venv-switch-all
 venv-get-active:
 	@python3 scripts/get_active_venv.py --repo-root $(REPO_ROOT)
+
+venv-switch-all:
+ifndef TARGET
+	$(error TARGET is required. Usage: make venv-switch-all TARGET=dev)
+endif
+	@echo "Switching virtual environments for all components..."
+	@for component in $$(python3 scripts/list_components.py --repo-root $(REPO_ROOT)); do \
+		echo ""; \
+		echo "==> Switching venv for $$component (TARGET=$(TARGET))..."; \
+		$(MAKE) venv-switch COMPONENT=$$component TARGET=$(TARGET) || exit 1; \
+	done
+	@echo ""
+	@echo "✓ All virtual environments switched to $(TARGET) successfully"
 
 .PHONY: venv-switch
 venv-switch:
