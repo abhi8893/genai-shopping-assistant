@@ -168,6 +168,10 @@ venv-refresh-all:
 		exit 1; \
 	fi
 
+.PHONY: venv-get-active
+venv-get-active:
+	@python3 scripts/get_active_venv.py --repo-root $(REPO_ROOT)
+
 .PHONY: venv-switch
 venv-switch:
 ifndef COMPONENT
