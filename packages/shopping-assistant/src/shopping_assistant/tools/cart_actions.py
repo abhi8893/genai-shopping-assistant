@@ -1,5 +1,8 @@
 from shopping_assistant.external.ecom_api_client.client import EcomAPIClient
-from shopping_assistant.external.ecom_api_client.resources.carts.types import CartItemData, CartUpdateBody, CartCreateBody
+from shopping_assistant.external.ecom_api_client.resources.carts.types import (
+    CartItemData, CartUpdateBody,
+    CartCreateBody, CartResponse
+)
 import shopping_assistant.types
 from collections import Counter
 # import functools
@@ -110,8 +113,64 @@ class Cart:
         cart_counter = self._get_counter_from_cart_items(cart.cart_items)
         return cart_counter
 
-    def view_cart(self):
-        return dict(self.counter)
+    def get_cart_details(self) -> dict:
+
+        cart = self.api_client.carts.get_cart(self._cart_id)
+        total = self._get_total_from_cart_response(cart)
+        cart_dict = cart.model_dump()
+        cart_dict["total"] = total
+
+        # Add product details to each cart item
+        for cart_item in cart_dict["cart_items"]:
+            product_id = cart_item.pop("product_id")
+            product = self.api_client.products.get_by_id(product_id)
+            cart_item["product"] = product.model_dump()
+
+        return cart_dict
+
+    @staticmethod
+    def _print_cart(cart: dict) -> str:
+        if not cart.get("cart_items"):
+            res = (
+                "**Cart is empty**",
+                "**Total: $0**"
+            )
+
+            return "\n".join(res)
+
+        headers = ["Sno", "Product", "Slug", "Qty", "Amount"]
+
+        lines = []
+        lines.append("| " + " | ".join(headers) + " |")
+        lines.append("|" + "|".join(["---"] * len(headers)) + "|")
+
+        total = 0.0
+
+        for idx, item in enumerate(cart["cart_items"], start=1):
+            product = item.get("product", {})
+
+            name = product.get("name", "Unknown")
+            slug = product.get("slug", "-")
+            qty = item.get("quantity", 0)
+            amount = float(item.get("amount", 0.0))
+
+            total += amount
+
+            lines.append(
+                f"| {idx} | {name} | {slug} | {qty} | ${amount:.2f} |"
+            )
+
+        # prefer cart total if provided
+        total = cart.get("total", total)
+
+        lines.append("")
+        lines.append(f"**Total: ${total:.2f}**")
+
+        return "\n".join(lines)
+
+    def view_cart(self) -> str:
+        cart = self.get_cart_details()
+        return self._print_cart(cart)
 
 
     def add_item(self, product_slug: str, quantity: int):
@@ -167,11 +226,15 @@ class Cart:
         )
         return self
 
-    # TODO: Refactor later from native `CartsAPI` functionality
-    def get_total(self):
-        cart = self.api_client.carts.get_cart(self._cart_id)
-        total = 0
 
+    # TODO: Refactor later from native `CartsAPI` functionality
+    @staticmethod
+    def _get_total_from_cart_response(cart: CartResponse) -> float:
+        total = 0
         for ci in cart.cart_items:
             total += ci.amount
         return total
+
+    def get_total(self):
+        cart = self.api_client.carts.get_cart(self._cart_id)
+        return self._get_total_from_cart_response(cart)
