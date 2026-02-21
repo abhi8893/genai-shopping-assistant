@@ -49,7 +49,7 @@ def get_path_dependencies(component_path: Path) -> list[tuple[str, Path]]:
 
         for dep_name, dep_config in uv_sources.items():
             if isinstance(dep_config, dict) and "path" in dep_config:
-                dep_path = component_path / dep_config["path"]
+                dep_path = (component_path / dep_config["path"]).resolve()
                 path_deps.append((dep_name, dep_path))
 
         return path_deps
