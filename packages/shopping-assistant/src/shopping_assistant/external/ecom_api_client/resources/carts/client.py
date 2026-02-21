@@ -46,7 +46,7 @@ class CartsAPIClient:
         try:
             return CartResponse.model_validate(
                 self.http.request(
-                    "post", "/", json=cart_create_data.dict(), raise_error=True
+                    "post", "/", json=cart_create_data.model_dump(), raise_error=True
                 )
             )
         except ApiError as e:
@@ -66,7 +66,10 @@ class CartsAPIClient:
         try:
             return CartResponse.model_validate(
                 self.http.request(
-                    "put", f"/{cart_id}", json=cart_update_data.dict(), raise_error=True
+                    "put",
+                    f"/{cart_id}",
+                    json=cart_update_data.model_dump(),
+                    raise_error=True,
                 )
             )
         except ApiError as e:
