@@ -10,7 +10,11 @@ from shopping_assistant.external.ecom_api_client.client import EcomAPIClient
 from shopping_assistant.external.ecom_api_client.credentials import (
     Credentials as EcomAPICredentials,
 )
+from shopping_assistant.observability.preflight import setup_opentelemetry_logging
 from shopping_assistant.observability.utils import configure_langfuse
+
+# TODO: Do this based on DEV, STAGING, PROD env (in DEV we want to see all logs)
+setup_opentelemetry_logging()
 
 VERSION = "0.1.0"
 

@@ -2,9 +2,20 @@ import base64
 import logging
 import os
 
+import httpx
 import logfire
 from langfuse import Langfuse
 from langfuse import get_client as get_langfuse_client
+
+
+def langfuse_auth_check(langfuse: Langfuse) -> bool:
+    try:
+        auth_check = langfuse.auth_check()
+        logging.info("Langfuse authentication check: %s", auth_check)
+        return auth_check
+    except httpx.ConnectError as exc:
+        logging.error("Error checking Langfuse authentication: %s", exc)
+        return False
 
 
 def configure_langfuse() -> Langfuse:
@@ -26,7 +37,7 @@ def configure_langfuse() -> Langfuse:
     langfuse = get_langfuse_client()
 
     # BUG: logging doesn't show up
-    if langfuse.auth_check():
+    if langfuse_auth_check(langfuse):
         logging.info("Langfuse authentication successful")
     else:
         logging.warning("Langfuse authentication failed")
