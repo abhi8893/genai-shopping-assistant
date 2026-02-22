@@ -22,6 +22,7 @@ from shopping_assistant.external.ecom_api_client.credentials import (
 )
 from shopping_assistant.graph.graph import build_graph
 from shopping_assistant.graph.types import State
+from shopping_assistant.observability.utils import langfuse_auth_check
 from shopping_assistant.tools.cart_actions import Cart
 
 
@@ -62,7 +63,7 @@ class Chat:
         if self.langfuse_client is not None:  # noqa: SIM102
             # TODO: Does this cause additional network I/O? Or can
             # LangfuseCallbackHandler gracefully fail if Langfuse is not available?
-            if self.langfuse_client.auth_check():
+            if langfuse_auth_check(self.langfuse_client):
                 base_conf["callbacks"] = [LangfuseCallbackHandler()]
         return base_conf
 
