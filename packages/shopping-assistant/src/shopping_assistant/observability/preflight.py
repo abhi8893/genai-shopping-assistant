@@ -24,6 +24,7 @@ def langfuse_auth_check_preflight() -> bool:
         return False
 
 
+# TODO: Add option of which loggers to set to CRITICAL level
 def setup_opentelemetry_logging():
     """
     Disable verbose opentelemetry logs.
