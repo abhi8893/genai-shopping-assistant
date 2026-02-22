@@ -123,6 +123,7 @@ class ProductSearchAgent:
             new_state = State(
                 messages=[asst_message],
                 prev_recommended_products=state.prev_recommended_products,
+                last_response_agent=self.name,
             )
 
             return new_state
