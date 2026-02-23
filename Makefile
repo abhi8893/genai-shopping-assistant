@@ -207,6 +207,28 @@ endif
 	@echo "----------------------------------------"
 	@$(MAKE) -s venv-get-active
 
+# ========================================
+# Venv Lockfile Targets
+# ========================================
+
+.PHONY: venv-lockfile
+venv-lockfile:
+ifndef COMPONENT
+	$(error COMPONENT is required. Usage: make venv-lockfile COMPONENT=packages/shopping-assistant [BUILD_MODE=local|linux/amd64])
+endif
+	@python3 scripts/build_venv_lockfile.py \
+		--repo-root $(REPO_ROOT) \
+		--component $(COMPONENT) \
+		--build-mode $(if $(BUILD_MODE),$(BUILD_MODE),local)
+
+.PHONY: venv-lockfile-all
+venv-lockfile-all:
+	@python3 scripts/build_venv_lockfile.py \
+		--repo-root $(REPO_ROOT) \
+		--all-components \
+		--build-mode $(if $(BUILD_MODE),$(BUILD_MODE),local)
+
+
 .PHONY: venv-switch
 venv-switch:
 ifndef COMPONENT
