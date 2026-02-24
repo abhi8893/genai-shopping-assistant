@@ -58,9 +58,8 @@ COPY packages/shopping-assistant /project/packages/shopping-assistant
 
 WORKDIR /project/services/shopping-assistant
 
-# Install deps (non-editable)
-RUN uv pip install --system --no-cache-dir \
-    /project/services/shopping-assistant
+ENV UV_PROJECT_ENVIRONMENT="/usr/local/"
+RUN uv sync --locked --no-dev --no-cache-dir
 
 
 EXPOSE 8010

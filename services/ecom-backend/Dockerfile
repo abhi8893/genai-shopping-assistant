@@ -39,9 +39,10 @@ COPY services/ecom-backend/pyproject.toml /project/services/ecom-backend/pyproje
 
 WORKDIR /project/services/ecom-backend
 
-RUN uv pip install --system --no-cache-dir .
-
 COPY services/ecom-backend /project/services/ecom-backend
+
+ENV UV_PROJECT_ENVIRONMENT="/usr/local/"
+RUN uv sync --locked --no-dev --no-cache-dir
 
 
 
