@@ -93,10 +93,42 @@ make venv-switch COMPONENT=packages/shopping-assistant TARGET=prod
 **How switching works**:
 1. If venv already active: deactivates by renaming `.venv` → `.venv-{old}`
 2. Activates target: renames `.venv-{target}` → `.venv`
-3. Updates `.info.json` with `active: ".venv-{target}"`
-4. Updates `options` to include both physical `.venv-*` dirs and active venv
+3. Repairs stale `VIRTUAL_ENV` path references in `bin/` activate scripts (see below)
+4. Updates `.info.json` with `active: ".venv-{target}"`
+5. Updates `options` to include both physical `.venv-*` dirs and active venv
 
 **Important**: Target venv must exist before switching (create with `venv-create` first)
+
+### Repairing VIRTUAL_ENV References
+
+When a venv is renamed (e.g. `.venv-dev` → `.venv`), the activate scripts inside `bin/`
+still contain hardcoded paths to the old directory name. `venv-switch` repairs these
+automatically, but the targets below allow ad-hoc repairs if needed.
+
+**Repair active `.venv` for a single component**:
+```bash
+make venv-repair-refs COMPONENT=packages/shopping-assistant
+```
+
+**Repair a specific non-active venv**:
+```bash
+make venv-repair-refs COMPONENT=packages/shopping-assistant TARGET=dev
+```
+
+**Repair all components** (optional `TARGET` works here too):
+```bash
+make venv-repair-refs-all
+make venv-repair-refs-all TARGET=prod
+```
+
+**Dry-run to inspect without writing**:
+```bash
+python3 scripts/repair_venv_references.py \
+  --venv-dir packages/shopping-assistant [--target dev] --dry-run
+```
+
+The underlying script is `scripts/repair_venv_references.py` and is also importable
+as a module (`from repair_venv_references import repair_venv_references`).
 
 ### Refreshing .info.json
 
