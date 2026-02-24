@@ -41,6 +41,7 @@ WORKDIR /project/services/ecom-backend
 
 COPY services/ecom-backend /project/services/ecom-backend
 
+# Ref: https://www.reddit.com/r/learnpython/comments/1hspt62/installing_dependencies_with_uv_sync_systemwide/
 ENV UV_PROJECT_ENVIRONMENT="/usr/local/"
 RUN uv sync --locked --no-dev --no-cache-dir
 
