@@ -1,4 +1,4 @@
-.PHONY: all venv-switch-all
+.PHONY: all venv-switch-all venv-repair-refs venv-repair-refs-all
 
 
 REPO_ROOT := $(abspath $(PWD))
@@ -228,6 +228,24 @@ venv-lockfile-all:
 		--all-components \
 		--build-mode $(if $(BUILD_MODE),$(BUILD_MODE),local)
 
+
+.PHONY: venv-repair-refs
+venv-repair-refs:
+ifndef COMPONENT
+	$(error COMPONENT is required. Usage: make venv-repair-refs COMPONENT=packages/shopping-assistant [TARGET=dev])
+endif
+	@python3 scripts/repair_venv_references.py --venv-dir $(REPO_ROOT)/$(COMPONENT) $(if $(TARGET),--target $(TARGET),)
+
+.PHONY: venv-repair-refs-all
+venv-repair-refs-all:
+	@echo "Repairing venv references for all components..."
+	@for component in $$(python3 scripts/list_components.py --repo-root $(REPO_ROOT)); do \
+		echo ""; \
+		echo "==> Repairing venv refs for $$component..."; \
+		python3 scripts/repair_venv_references.py --venv-dir $(REPO_ROOT)/$$component $(if $(TARGET),--target $(TARGET),); \
+	done
+	@echo ""
+	@echo "✓ All venv references repaired successfully"
 
 .PHONY: venv-switch
 venv-switch:

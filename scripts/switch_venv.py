@@ -8,8 +8,12 @@ import os
 import sys
 from pathlib import Path
 
+scripts_dir = Path(__file__).parent
+sys.path.insert(0, str(scripts_dir))
+from repair_venv_references import repair_venv_references  # noqa: E402
 
-def switch_venv(repo_root: Path, component: str, target_venv: str) -> int:  # noqa: C901
+
+def switch_venv(repo_root: Path, component: str, target_venv: str) -> int:  # noqa: C901,PLR0915
     """Switch to a different virtual environment.
 
     Args:
@@ -106,7 +110,10 @@ def switch_venv(repo_root: Path, component: str, target_venv: str) -> int:  # no
     target_venv_path.rename(default_venv)
     print(f"  Renamed {target_venv} → .venv")
 
-    # Step 4: Update .info.json
+    # Step 4: Repair VIRTUAL_ENV path references in activate scripts
+    repair_venv_references(default_venv)
+
+    # Step 5: Update .info.json
     # Options should be union of physically present .venv-* and active venv
     venv_available = [
         os.path.basename(f) for f in glob.glob(str(component_path / ".venv-*"))
