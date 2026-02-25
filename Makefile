@@ -279,3 +279,10 @@ endif
 	@echo ""
 	@echo "----------------------------------------"
 	@$(MAKE) -s venv-get-active
+
+.PHONY: direnv-setup
+direnv-setup:
+	@echo "Setting up .envrc files..."
+	@python3 scripts/setup_direnv.py --repo-root $(REPO_ROOT)
+	@echo ""
+	@echo "✓ .envrc files created and allowed"
