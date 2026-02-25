@@ -58,6 +58,36 @@ def get_path_dependencies(component_path: Path) -> list[tuple[str, Path]]:
         return []
 
 
+def patch_activate_scripts(venv_path: Path, prompt: str) -> None:
+    """Patch VIRTUAL_ENV_PROMPT in uv-generated activate scripts."""
+    patches = {
+        "bin/activate": (
+            'VIRTUAL_ENV_PROMPT=$(basename "$VIRTUAL_ENV")',
+            f'VIRTUAL_ENV_PROMPT="{prompt}"',
+        ),
+        "bin/activate.csh": (
+            'setenv VIRTUAL_ENV_PROMPT "$VIRTUAL_ENV:t:q"',
+            f"setenv VIRTUAL_ENV_PROMPT '{prompt}'",
+        ),
+        "bin/activate.fish": (
+            'set -gx VIRTUAL_ENV_PROMPT (basename "$VIRTUAL_ENV")',
+            f"set -gx VIRTUAL_ENV_PROMPT '{prompt}'",
+        ),
+        "bin/activate.ps1": (
+            "$env:VIRTUAL_ENV_PROMPT = $( Split-Path $env:VIRTUAL_ENV -Leaf )",
+            f'$env:VIRTUAL_ENV_PROMPT = "{prompt}"',
+        ),
+    }
+
+    for rel_path, (old, new) in patches.items():
+        script = venv_path / rel_path
+        if not script.exists():
+            continue
+        content = script.read_text()
+        if old in content:
+            script.write_text(content.replace(old, new))
+
+
 def create_venv(repo_root: Path, component: str, group: str) -> int:
     """Create a virtual environment for the specified component and group."""
     component_path = repo_root / component
@@ -83,10 +113,19 @@ def create_venv(repo_root: Path, component: str, group: str) -> int:
     # Create venv using uv
     try:
         subprocess.run(
-            ["uv", "venv", venv_name, "--python", "3.12"],
+            [
+                "uv",
+                "venv",
+                venv_name,
+                "--python",
+                "3.12",
+                "--prompt",
+                f"{component}@{group}",
+            ],
             cwd=component_path,
             check=True,
         )
+        # patch_activate_scripts(venv_path, f"{component}@{group}")
     except subprocess.CalledProcessError as e:
         print(f"Error creating venv: {e}", file=sys.stderr)
         return 1
