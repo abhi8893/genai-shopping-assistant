@@ -55,8 +55,7 @@ local-run-prod:
 
 # TODO: Adhoc way to ingest products into vectorstore
 ingest-products-vectordb:
-	python chatbot/scripts/ingest_product_data_into_vectorstore.py \
-	--sqlite-db-path "ecom-backend/ecom_backend.db"
+	uv run --python services/shopping-assistant/.venv services/shopping-assistant/scripts/ingest_product_data_into_vectorstore.py
 
 
 # Pre-commit targets with conditional FILE handling
@@ -286,3 +285,5 @@ direnv-setup:
 	@python3 scripts/setup_direnv.py --repo-root $(REPO_ROOT)
 	@echo ""
 	@echo "✓ .envrc files created and allowed"
+
+
