@@ -117,8 +117,6 @@ def create_venv(repo_root: Path, component: str, group: str) -> int:
                 "uv",
                 "venv",
                 venv_name,
-                "--python",
-                "3.12",
                 "--prompt",
                 f"{component}@{group}",
             ],
