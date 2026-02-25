@@ -2,6 +2,7 @@
 
 
 REPO_ROOT := $(abspath $(PWD))
+PYTHON_VERSION ?= 3.12
 export DOCKER_BUILDKIT=1
 export REPO_ROOT
 
@@ -246,6 +247,25 @@ venv-repair-refs-all:
 	done
 	@echo ""
 	@echo "✓ All venv references repaired successfully"
+
+
+.PHONY: venv-pin-python
+venv-pin-python:
+	@cd $(REPO_ROOT)/$(if $(COMPONENT),$(COMPONENT),) && uv python pin $(PYTHON_VERSION)
+
+.PHONY: venv-pin-python-all
+venv-pin-python-all:
+	@echo "Pinning Python $(PYTHON_VERSION) for root and all components..."
+	@echo ""
+	@echo "==> Pinning Python $(PYTHON_VERSION) for repo root..."
+	@cd $(REPO_ROOT) && uv python pin $(PYTHON_VERSION)
+	@for component in $$(python3 scripts/list_components.py --repo-root $(REPO_ROOT)); do \
+		echo ""; \
+		echo "==> Pinning Python $(PYTHON_VERSION) for $$component..."; \
+		cd $(REPO_ROOT)/$$component && uv python pin $(PYTHON_VERSION) || exit 1; \
+	done
+	@echo ""
+	@echo "✓ Python $(PYTHON_VERSION) pinned for root and all components"
 
 .PHONY: venv-switch
 venv-switch:
