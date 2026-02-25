@@ -194,6 +194,24 @@ shopping-assistant = { path = "../../packages/shopping-assistant" }
 - Then reinstalled in editable mode (`-e`) in a second pass
 - This ensures dev workflow has editable internal packages
 
+### Python Version Pinning
+
+`.python-version` files are managed via `uv python pin` and exist at the repo root and in each component directory. `PYTHON_VERSION` defaults to `3.12` (matching `.github/workflows/main.yml`).
+
+```bash
+# Pin repo root (no COMPONENT)
+make venv-pin-python
+
+# Pin a single component
+make venv-pin-python COMPONENT=packages/shopping-assistant
+
+# Pin root + all components
+make venv-pin-python-all
+
+# Override Python version
+make venv-pin-python-all PYTHON_VERSION=3.13
+```
+
 ### Common Venv Workflows
 
 **Setting up a new development environment**:
