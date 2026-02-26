@@ -121,3 +121,6 @@ data/*
 .wip/*
 
 .local/*
+
+# Keep example env files
+!**/.env.*example
