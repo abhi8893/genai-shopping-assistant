@@ -6,6 +6,9 @@ import httpx
 import logfire
 from langfuse import Langfuse
 from langfuse import get_client as get_langfuse_client
+from langfuse.api.resources.commons.errors.unauthorized_error import (
+    UnauthorizedError as LangfuseUnauthorizedError,
+)
 
 
 def langfuse_auth_check(langfuse: Langfuse) -> bool:
@@ -14,8 +17,11 @@ def langfuse_auth_check(langfuse: Langfuse) -> bool:
         logging.info("Langfuse authentication check: %s", auth_check)
         return auth_check
     except httpx.ConnectError as exc:
-        logging.error("Error checking Langfuse authentication: %s", exc)
-        return False
+        logging.error("Error with Langfuse connection: %s", exc)
+    except LangfuseUnauthorizedError as exc:
+        logging.error("Error with Langfuse authentication: %s", exc)
+
+    return False
 
 
 def configure_langfuse() -> Langfuse:
