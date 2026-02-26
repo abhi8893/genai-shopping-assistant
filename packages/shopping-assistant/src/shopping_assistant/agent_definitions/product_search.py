@@ -79,10 +79,10 @@ class ProductSearchAgent:
         else:
             product_list_prompt_str = get_product_list_prompt_str(products_retrieved)
 
-        asst_response = (
-            "I found the following products based on your query:\n\n"
-            + product_list_prompt_str
-        )
+            asst_response = (
+                "I found the following products based on your query:\n\n"
+                + product_list_prompt_str
+            )
 
         return asst_response
 
