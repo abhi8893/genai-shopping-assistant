@@ -11,16 +11,20 @@ APP_COMPOSE_DEV=platform/app/docker-compose.dev.yml
 LANGFUSE_COMPOSE=platform/observability/docker-compose.langfuse.yml
 
 langfuse-dev:
+	set -a; \
+	. platform/observability/.env; \
+	. platform/observability/.env.dev; \
+	set +a; \
 	docker compose \
-		--env-file platform/observability/.env \
-		--env-file platform/observability/.env.dev \
 		-p langfuse-dev \
 		-f $(LANGFUSE_COMPOSE) \
 		up -d
 
 langfuse-prod:
+	set -a; \
+	. platform/observability/.env; \
+	set +a; \
 	docker compose \
-		--env-file platform/observability/.env \
 		-p langfuse-prod \
 		-f $(LANGFUSE_COMPOSE) \
 		up -d
@@ -30,17 +34,21 @@ langfuse-prod:
 # $(if $(SERVICES),up --build -d --scale $(SERVICES)=0,$(if $(BUILD),build,$(if $(UP),up -d --build,$(error Please specify either BUILD, UP or SERVICES))))
 
 app-dev:
+	set -a; \
+	. platform/app/.env; \
+	. platform/app/.env.dev; \
+	set +a; \
 	docker compose \
-		--env-file platform/app/.env \
-		--env-file platform/app/.env.dev \
 		-p app-dev \
 		-f $(APP_COMPOSE) \
 		-f $(APP_COMPOSE_DEV) \
 		up --build -d
 
 app-prod:
+	set -a; \
+	. platform/app/.env; \
+	set +a; \
 	docker compose \
-		--env-file platform/app/.env \
 		-p app-prod \
 		-f $(APP_COMPOSE) \
 		up --build -d
