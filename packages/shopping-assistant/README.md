@@ -145,3 +145,41 @@ To install the latest unreleased code from the `main` branch:
 ```bash
 uv pip install "git+https://github.com/abhi8893/genai-shopping-assistant.git@develop#subdirectory=packages/shopping-assistant"
 ```
+
+---
+
+## Package Structure
+
+```bash
+src/shopping_assistant/
+├── agent_definitions/          # Agent prompt definitions and configurations
+│   ├── router.py               # RouterAgent — classifies intent and routes to specialist agents
+│   ├── product_search.py       # ProductSearchAgent — semantic product discovery via Weaviate
+│   ├── shopping_actions.py     # ShoppingActionsAgent — cart, checkout, and order operations
+│   └── customer_service.py     # CustomerServiceAgent — general support and FAQs
+├── graph/                      # LangGraph orchestration
+│   ├── graph.py                # Multi-agent graph definition and entrypoint
+│   ├── types.py                # Graph state types
+│   └── utils.py                # Graph utility helpers
+├── external/
+│   └── ecom_api_client/        # HTTP client for the Ecom Backend API
+│       ├── client.py           # EcomAPIClient — top-level client
+│       ├── credentials.py      # Credentials model
+│       ├── http.py             # Base HTTP transport
+│       └── resources/
+│           ├── carts/          # Cart API resource (client + types)
+│           └── products/       # Products API resource (client + types)
+├── tools/                      # Agent tools
+│   └── cart_actions.py         # ShoppingActions agent cart action tools wrapping EcomAPIClient cart operations
+├── observability/
+│   ├── utils.py                # Langfuse + logfire setup
+│   └── preflight.py            # Connectivity pre-flight checks
+├── config/
+│   └── config.yml              # Default agent and LLM configuration
+├── chat.py                     # Chat — high-level Python API (CLI and web UI)
+├── cli.py                      # CLI entrypoint (shopping-assistant commands)
+├── config.py                   # Config loader
+├── product_retrieval.py        # product retrieval with weaviate
+├── env.py                      # .env file loader
+└── types.py                    # Shared types
+```
