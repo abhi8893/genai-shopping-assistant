@@ -183,3 +183,73 @@ src/shopping_assistant/
 ├── env.py                      # .env file loader
 └── types.py                    # Shared types
 ```
+
+---
+
+## Architecture
+
+The package implements a **multi-agent LangGraph pipeline**. A central `RouterAgent` classifies every user message and dispatches it to one of three specialist agents. Each agent runs independently and writes its response back to the shared graph `State`.
+
+### Agents
+
+| Agent | Role | LLM Framework | External Dependency |
+|---|---|---|---|
+| `RouterAgent` | Classifies user intent and routes to the correct specialist | OpenAI structured output (`parse`) | — |
+| `ProductSearchAgent` | Parses product query, runs semantic search, returns matching products | OpenAI chat | Weaviate (vector DB) |
+| `ShoppingActionsAgent` | Manages cart operations (add, remove, view, checkout) via function tools | OpenAI Agents SDK (`Agent` + `Runner`) | Ecom Backend API |
+| `CustomerServiceAgent` | Handles general support, FAQs, and off-topic queries | OpenAI chat | — |
+
+### Graph Flow
+
+```mermaid
+graph TD
+    User(["User message"])
+    START(["START"])
+    END(["END"])
+    Response(["Agent response"])
+
+    User --> START
+    START -->|"conditional edge"| Router
+
+    subgraph Router["RouterAgent"]
+        R["Classify intent → <br> product_search | shopping_actions | customer_service"]
+    end
+
+    Router -->|product_search| PS
+    Router -->|shopping_actions| SA
+    Router -->|customer_service| CS
+
+    subgraph PS["ProductSearchAgent"]
+        PS1["Parse query details <br> (category, price range)"]
+        PS2["Semantic search <br> via Weaviate"]
+        PS1 --> PS2
+    end
+
+    subgraph SA["ShoppingActionsAgent"]
+        SA1["OpenAI Agents SDK<br>with function tools"]
+        SA2["Cart operations<br>via EcomAPIClient"]
+        SA1 --> SA2
+    end
+
+    subgraph CS["CustomerServiceAgent"]
+        CS1["General support<br>& FAQ response"]
+    end
+
+    PS --> END
+    SA --> END
+    CS --> END
+    END --> Response
+
+    PS2 <-->|"WeaviateConnectionManager"| Weaviate[("Weaviate<br>vector DB")]
+    SA2 <-->|"EcomAPIClient"| EcomAPI[("Ecom<br>Backend API")]
+```
+
+### Graph State
+
+All agents read from and write to a shared `State` object:
+
+| Field | Type | Description |
+|---|---|---|
+| `messages` | `list` | Accumulated OpenAI-format conversation messages |
+| `prev_recommended_products` | `list[ProductVectorDBRecord] \| None` | Products recommended in the current session |
+| `last_response_agent` | `str \| None` | Name of the agent that produced the last response |
