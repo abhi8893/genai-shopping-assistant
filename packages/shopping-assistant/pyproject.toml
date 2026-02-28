@@ -31,3 +31,6 @@ notebook = ["jupyter"]
 [tool.setuptools.packages.find]
 where = ["src/"]
 include = ["shopping_assistant*"]
+
+[tool.setuptools.package-data]
+shopping_assistant = ["config/*.yml"]
