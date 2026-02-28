@@ -538,3 +538,142 @@ for query in queries:
     print(new_state.messages[-1]["content"])
     print()
 ```
+
+---
+
+## ShoppingActionsAgent
+
+Handles all cart and order operations. It uses the OpenAI Agents SDK (`Agent` + `Runner`) with function tools that wrap `EcomAPIClient`. The agent parses the user's intent, selects the appropriate tool, executes it against the Ecom Backend API, and returns a confirmation with the updated cart state.
+
+### Prompt
+
+Configured under `agents.shopping_actions` in `config.yml`. The system prompt is built dynamically at construction time from the available action types and their tools:
+
+```
+You are a helpful shopping assistant that can help users with their shopping needs.
+Based on the user's query, you do the following:
+
+Step 1. Parse the user's query to understand the user's intended action type
+        out of the following list: {action_list}
+Step 2. If no action type is identified, respond with what you can help with.
+Step 3. Based on the action type, call the appropriate action tool:
+        {action_detailed}
+Step 4. After the action is completed, inform the user of the result.
+```
+
+The current action type is `cart`, with these tools:
+
+| Tool | Description |
+|---|---|
+| `add_to_cart` | Add a product (by slug) to the cart |
+| `remove_from_cart` | Remove a quantity of a product from the cart |
+| `view_cart` | View all cart items and total |
+| `empty_cart` | Empty the entire cart |
+| `empty_item_from_cart` | Remove all quantity of a specific item |
+| `get_cart_total` | Get the cart total value |
+
+### Connection with Ecom Backend API
+
+`ShoppingActionsAgent` does not take `EcomAPIClient` directly — it takes a `Cart` object (from `shopping_assistant.tools.cart_actions`) which wraps the client. `Cart` is initialised with an `EcomAPIClient` that holds the base URL and user credentials.
+
+`tools.cart_actions.Cart` -> `EcomAPIClient` -> `CartsAPIClient` -> `api/v1/carts/*`
+
+```python
+import os
+from dotenv import load_dotenv
+from shopping_assistant.external.ecom_api_client.client import EcomAPIClient
+from shopping_assistant.external.ecom_api_client.credentials import Credentials
+from shopping_assistant.tools.cart_actions import Cart
+
+load_dotenv(".env")
+
+ecom_api_client = EcomAPIClient(
+    base_url=os.getenv("ECOM_API_BASE_URL"),
+    credentials=Credentials(user_id=1),
+)
+cart = Cart(api_client=ecom_api_client)
+```
+
+> The Ecom Backend must be running. See the repo root `README.md` for setup instructions.
+
+### Python API
+
+```python
+from shopping_assistant.agent_definitions import ShoppingActionsAgent
+from shopping_assistant.config import load_config
+
+config = load_config()
+agent = ShoppingActionsAgent(config=config["agents"]["shopping_actions"], cart=cart)
+```
+
+`ShoppingActionsAgent` constructor accepts:
+
+| Parameter | Type | Description |
+|---|---|---|
+| `config` | `dict` | Agent config block (`config["agents"]["shopping_actions"]`) |
+| `cart` | `Cart` | Cart instance wrapping `EcomAPIClient` |
+
+### Usage
+
+`run(state)` is async and must be awaited:
+
+```python
+import asyncio
+from shopping_assistant.graph.types import State
+
+queries = [
+    "Add trendy-tapered-sunglasses to my cart",
+    "Can I please see my cart?",
+    "Update the quantity of southwest-bracelet to 2",
+]
+
+async def main():
+    for query in queries:
+        state = State(messages=[{"role": "user", "content": query}])
+        new_state = await agent.run(state)
+        print(f"User  : {query!r}")
+        print(new_state.messages[-1]["content"])
+        print()
+
+asyncio.run(main())
+```
+
+### Output
+
+`ShoppingActionsAgent.run(state)` returns an updated `State` with the agent's reply appended to `messages`, prefixed with `"Shopping Actions Agent: "`. Cart state is included inline in the response.
+
+```
+User  : 'Add trendy-tapered-sunglasses to my cart'
+Shopping Actions Agent: I have added the Trendy Tapered Sunglasses to your cart. Here's what your cart currently looks like:
+
+| Sno | Product | Slug | Qty | Amount |
+|---|---|---|---|---|
+| 1 | Southwest Bracelet | southwest-bracelet | 1 | $169.99 |
+| 2 | Floral Choker Necklace | floral-choker-necklace | 2 | $259.98 |
+| 3 | Ivy Leaf Embroidered Skirt | ivy-leaf-embroidered-skirt | 1 | $189.99 |
+| 4 | Trendy Tapered Sunglasses | trendy-tapered-sunglasses | 1 | $49.99 |
+
+**Total: $669.95**
+
+User  : 'Can I please see my cart?'
+Shopping Actions Agent: Here's what you have in your cart:
+
+1. Southwest Bracelet: $169.99 (Quantity: 1)
+2. Floral Choker Necklace: $259.98 (Quantity: 2)
+3. Ivy Leaf Embroidered Skirt: $189.99 (Quantity: 1)
+4. Trendy Tapered Sunglasses: $49.99 (Quantity: 1)
+
+Your current total amount is $669.95.
+
+User  : 'Update the quantity of southwest-bracelet to 2'
+Shopping Actions Agent: The quantity of the "Southwest Bracelet" has been successfully updated to 2. Here is the current state of your cart:
+
+| Sno | Product | Slug | Qty | Amount |
+|---|---|---|---|---|
+| 1 | Southwest Bracelet | southwest-bracelet | 3 | $509.97 |
+| 2 | Floral Choker Necklace | floral-choker-necklace | 2 | $259.98 |
+| 3 | Ivy Leaf Embroidered Skirt | ivy-leaf-embroidered-skirt | 1 | $189.99 |
+| 4 | Trendy Tapered Sunglasses | trendy-tapered-sunglasses | 1 | $49.99 |
+
+The total amount of your cart is $1009.93.
+```
