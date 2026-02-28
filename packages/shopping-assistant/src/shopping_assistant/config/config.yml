@@ -9,10 +9,10 @@ agents:
           Product Search Agent: ...
           ```
         examples:
-          - I am looking for headphones under 2000 rupees.
-          - Do you have wind cheaters in red and white colour?
-          - I want to buy a new laptop.
-          - Can you give me some options for phones with good camera?
+          - I am looking for black sunglasses under 100$.
+          - Do you have earrings in white colour?
+          - I want to buy some skirts for my wife as a gift.
+          - Can you give me some options for rugged bags, preferably under 100$?
 
       - name: shopping_actions
         description: |

@@ -3,19 +3,20 @@ agents:
     downstream_routes:
       - name: product_search
         description: Helps the user find products in the catalog based on the product name or description.
-        examples: |
-          - I am looking for headphones under 2000 rupees.
-          - Do you have wind cheaters in red and white colour?
-          - I want to buy a new laptop.
-          - Can you give me some options for phones with good camera?
+        examples:
+          - I am looking for black sunglasses under 100$.
+          - Do you have earrings in white colour?
+          - I want to buy some skirts for my wife as a gift.
+          - Can you give me some options for rugged bags, preferably under 100$?
 
       - name: shopping_actions
         description: Helps the user perform shopping actions such as shoppingcart interaction,
             order placement, checkout, cancellation etc
         examples:
-          - Can you add this to the cart?
-          - Please update the quantity of hdmi cables to 2.
-          - I want to place an order for this product
+          - Can I please see my cart?
+          - What's my cart total?
+          - Please update the quantity of rose earrings to 2.
+          - I want to place an order for rose earrings.
           - I want to cancel my order
           - Can you take me to the checkout page?
         
