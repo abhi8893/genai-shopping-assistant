@@ -78,7 +78,7 @@ class Chat:
             user_input = input("User: ")
             if print_user_input:
                 print("User: " + user_input)
-            if user_input == "exit":
+            if user_input == r"\quit":
                 print("Assistant: Goodbye!")
                 return
 

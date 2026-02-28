@@ -1,2 +1,5 @@
 **/*venv*/
 .git
+node_modules
+__pycache__
+dist

@@ -10,15 +10,19 @@ version = "0.1.0"
 requires-python = ">=3.12"
 
 dependencies = [
-    "python-dotenv", "langgraph", 
-    "openai-agents", "openai", 
+    "python-dotenv", "langgraph",
+    "openai-agents", "openai",
     "langchain", "langchain_community",
     "weaviate-client",
     "gradio",
     "langfuse",
     "openinference-instrumentation-openai-agents",
-    "logfire"
+    "logfire",
+    "click"
 ]
+
+[project.scripts]
+shopping-assistant = "shopping_assistant.cli:main"
 
 [dependency-groups]
 dev = [
@@ -31,3 +35,6 @@ notebook = ["jupyter"]
 [tool.setuptools.packages.find]
 where = ["src/"]
 include = ["shopping_assistant*"]
+
+[tool.setuptools.package-data]
+shopping_assistant = ["config/*.yml", ".env.example"]
