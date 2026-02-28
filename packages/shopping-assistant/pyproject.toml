@@ -33,4 +33,4 @@ where = ["src/"]
 include = ["shopping_assistant*"]
 
 [tool.setuptools.package-data]
-shopping_assistant = ["config/*.yml"]
+shopping_assistant = ["config/*.yml", ".env.example"]
