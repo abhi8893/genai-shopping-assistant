@@ -743,3 +743,43 @@ Or from the command line directly:
 ```bash
 shopping-assistant chat --user-id 1 --env-file .env
 ```
+
+---
+
+## CLI
+
+### Scaffold a new project directory
+
+Creates a new directory with a starter `config/config.yml` and `.env.example`:
+
+```bash
+shopping-assistant create new <out_dir>
+```
+
+`<out_dir>` defaults to `.shopping-assistant` if omitted.
+
+### Start an interactive CLI chat session
+
+```bash
+shopping-assistant chat --mode cli --user-id <user_id> --env-file <path_to_env>
+```
+
+Type `\quit` to exit the session.
+
+### Launch the Gradio web UI
+
+```bash
+shopping-assistant chat --mode web --user-id <user_id> --env-file <path_to_env>
+```
+
+Opens a Gradio chat interface in the browser.
+
+> Use `--config-dir <dir>` to point to a custom `config.yml` directory. Defaults to the package's built-in config.
+
+### `Chat.web_ui_chat` — Gradio web UI
+
+Launches a Gradio chat interface in the browser.
+
+```python
+chat.web_ui_chat()
+```
