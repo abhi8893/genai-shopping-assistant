@@ -348,3 +348,82 @@ Route : 'shopping_actions'
 Query : 'What is your return policy?'
 Route : 'customer_service'
 ```
+
+---
+
+## CustomerServiceAgent
+
+Handles general chitchat and customer service queries — anything not related to product discovery or cart operations. It uses a plain OpenAI chat completion (no structured output, no tools).
+
+### Prompt
+
+Configured under `agents.customer_service` in `config.yml`. The agent is instructed to handle general support and chitchat, and to use the conversation history to understand which agent has previously responded.
+
+```
+You are a helpful customer service agent for an e-commerce website.
+Answer any general chitchat questions as well as specific customer service
+questions for the user.
+
+Analyze the provided conversation history with the user to re-examine if
+you are the right agent to answer the user's query.
+...
+DO NOT include your designated name or alias in your response.
+```
+
+### Python API
+
+```python
+from shopping_assistant.agent_definitions import CustomerServiceAgent
+from shopping_assistant.config import load_config
+
+config = load_config()
+agent = CustomerServiceAgent(config=config["agents"]["customer_service"])
+```
+
+`CustomerServiceAgent` constructor accepts:
+
+| Parameter | Type | Description |
+|---|---|---|
+| `config` | `dict` | Agent config block (`config["agents"]["customer_service"]`) |
+| `openai_client` | `openai.OpenAI \| None` | Optional pre-configured OpenAI client; defaults to `openai.OpenAI()` |
+
+### Usage
+
+```python
+from shopping_assistant.graph.types import State
+
+queries = [
+    "Hello! How are you?",
+    "What is your return policy?",
+    "I have a complaint about a product I received.",
+]
+
+for query in queries:
+    state = State(messages=[{"role": "user", "content": query}])
+    new_state = agent.run(state)
+    print(f"User  : {query!r}")
+    print(f"Agent : {new_state.messages[-1]['content']!r}")
+    print()
+```
+
+### Output
+
+`run(state)` returns an updated `State` with the agent's reply appended to `messages`. The response is prefixed with `"Customer Service Agent: "`.
+
+```
+User  : 'Hello! How are you?'
+Customer Service Agent: Hello! I'm doing well, thank you for asking. How can I assist you today?
+
+User  : 'What is your return policy?'
+Customer Service Agent: Our return policy allows you to return most items within
+30 days of receipt for a full refund. Items must be in their original condition, unused,
+and with all tags and packaging intact. Some exceptions may apply, such as for personalized
+or final sale items.
+
+If you have a specific item in mind or need help with the return process, feel free to ask!'
+
+User  : 'I have a complaint about a product I received.'
+Customer Service Agent: I'm here to help you with your complaint. Could you please
+provide more details about the product and the issue you're experiencing? This information
+will help me assist you better.
+```
