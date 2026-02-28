@@ -123,3 +123,25 @@ LLM traces are sent to [Langfuse](https://langfuse.com). These are optional but 
 | `LANGFUSE_BASE_URL` | Langfuse server URL | `http://localhost:3000` |
 
 > For self-hosted Langfuse setup see `platform/observability/`.
+
+---
+
+## Installing the Package
+
+> **Note:** `shopping-assistant` is not currently published to PyPI. Install directly from GitHub.
+
+### Latest released version
+
+```bash
+uv pip install "git+https://github.com/abhi8893/genai-shopping-assistant.git@<version>#subdirectory=packages/shopping-assistant"
+```
+
+Replace `<version>` with a release tag (e.g. `v0.1.0`). Available releases can be found on the [GitHub releases page](https://github.com/abhi8893/genai-shopping-assistant/releases).
+
+### Current develop version
+
+To install the latest unreleased code from the `main` branch:
+
+```bash
+uv pip install "git+https://github.com/abhi8893/genai-shopping-assistant.git@develop#subdirectory=packages/shopping-assistant"
+```
