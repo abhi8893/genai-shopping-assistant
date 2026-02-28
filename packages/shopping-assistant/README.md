@@ -427,3 +427,114 @@ Customer Service Agent: I'm here to help you with your complaint. Could you plea
 provide more details about the product and the issue you're experiencing? This information
 will help me assist you better.
 ```
+
+---
+
+## ProductSearchAgent
+
+Handles product discovery. It first uses OpenAI structured output to parse the user query into category, subcategory, and price range. If the category cannot be inferred, it returns a clarification response. Otherwise, it runs a semantic `near_text` search against the Weaviate `products` collection and returns the matching results.
+
+### Prompt
+
+Configured under `agents.product_search` in `config.yml`. The system prompt includes the catalog hierarchy tree and the previously recommended products, and instructs the agent to follow a structured parsing step:
+
+```
+You are a shopping assistant, who helps users find products in an e-commerce store.
+You are given the product catalog hierarchy as follows:
+
+{catalog_hierarchy_tree}
+
+You previously recommended the following products to the user:
+
+{prev_recommended_products}
+
+STEPS:
+1. Identify the category from the user query => `category`
+   IMPORTANT: ONLY IF NO category can be inferred, return None and proceed to step 2A,
+   else jump to step 2B
+2A. Draft a clarification response as `product_clarification_response`. NOW EXIT.
+2B. Identify the subcategory => `subcategory`
+3. Identify the price range (min_price, max_price) => `price_range`
+4. Rephrase the user query to a specific retrieval query => `retrieval_query`
+```
+
+The default catalog hierarchy (from `config.yml`):
+
+```
+accessories:  bag, sunglasses
+apparel:      dress, skirt, top blouse sweater
+footwear:     shoes
+jewelry:      bracelet, earrings, necklace
+```
+
+### Connection with Weaviate
+
+`ProductSearchAgent` accepts a `WeaviateClient` at construction time. The client is passed through to `retrieve_products()` which uses `WeaviateConnectionManager` to manage the connection lifecycle and run a `near_text` semantic search against the `products` collection.
+
+```python
+import os
+import weaviate
+from shopping_assistant.product_retrieval import WeaviateConnectionManager
+
+weaviate_client = weaviate.WeaviateClient(
+    connection_params=weaviate.connect.ConnectionParams(
+        http={"host": os.getenv("WEAVIATE_HTTP_HOST"), "port": os.getenv("WEAVIATE_HTTP_PORT"), "secure": False},
+        grpc={"host": os.getenv("WEAVIATE_GRPC_HOST"), "port": os.getenv("WEAVIATE_GRPC_PORT"), "secure": False},
+    )
+)
+```
+
+> Weaviate must be running and the `products` collection must be ingested. See the repo root `README.md` for setup instructions.
+
+### Python API
+
+```python
+import os
+import weaviate
+from dotenv import load_dotenv
+from shopping_assistant.agent_definitions import ProductSearchAgent
+from shopping_assistant.config import load_config
+
+load_dotenv(".env")
+config = load_config()
+
+weaviate_client = weaviate.WeaviateClient(
+    connection_params=weaviate.connect.ConnectionParams(
+        http={"host": os.getenv("WEAVIATE_HTTP_HOST"), "port": os.getenv("WEAVIATE_HTTP_PORT"), "secure": False},
+        grpc={"host": os.getenv("WEAVIATE_GRPC_HOST"), "port": os.getenv("WEAVIATE_GRPC_PORT"), "secure": False},
+    )
+)
+
+agent = ProductSearchAgent(
+    config=config["agents"]["product_search"],
+    weaviate_client=weaviate_client,
+)
+```
+
+`ProductSearchAgent` constructor accepts:
+
+| Parameter | Type | Description |
+|---|---|---|
+| `config` | `dict` | Agent config block (`config["agents"]["product_search"]`) |
+| `openai_client` | `openai.OpenAI \| None` | Optional pre-configured OpenAI client; defaults to `openai.OpenAI()` |
+| `weaviate_client` | `WeaviateClient \| None` | Weaviate client for product retrieval; defaults to `weaviate.connect_to_local()` |
+| `langfuse_client` | `Langfuse \| None` | Optional Langfuse client for tracing |
+
+### Usage
+
+```python
+from shopping_assistant.graph.types import State
+
+queries = [
+    "I am looking for black sunglasses under 100$.",
+    "Do you have earrings in white colour?",
+    "I am looking for gaming laptops which can run raytracing at ultra settings",
+]
+
+for query in queries:
+    state = State(messages=[{"role": "user", "content": query}])
+    new_state = agent.run(state)
+    print(f"User  : {query!r}")
+    print(new_state.messages[-1]["content"])
+    print()
+```
