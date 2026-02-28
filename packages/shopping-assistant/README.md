@@ -253,3 +253,98 @@ All agents read from and write to a shared `State` object:
 | `messages` | `list` | Accumulated OpenAI-format conversation messages |
 | `prev_recommended_products` | `list[ProductVectorDBRecord] \| None` | Products recommended in the current session |
 | `last_response_agent` | `str \| None` | Name of the agent that produced the last response |
+
+
+---
+
+## RouterAgent
+
+The `RouterAgent` is the graph entrypoint. It inspects the conversation history and returns the name of the downstream route to execute. It never produces a user-facing message itself. It is based on OpenAI's `parse` structured output.
+
+The three routes and representative examples from the default config:
+
+| Route | Example queries |
+|---|---|
+| `product_search` | "I am looking for headphones under 2000 rupees.", "Do you have wind cheaters in red?" |
+| `shopping_actions` | "Can you add this to the cart?", "I want to place an order for this product." |
+| `customer_service` | "Hello!", "Can you tell me the return policy?" |
+
+### Prompt
+
+Configured under `agents.router` in `config.yml`. The system prompt instructs the agent to analyse the conversation and select the correct route. The `{downstream_routes_desc}` placeholder is populated at runtime from the `downstream_routes` list, which includes each route's name, description, and example queries.
+
+```
+You are a helpful ecom shopping assistant tasked with redirecting the user
+to the appropriate specialized downstream routes.
+Analyze the provided conversation history with the user to re-examine if
+you are the right agent to answer the user's query.
+...
+{downstream_routes_desc}
+
+Please respond ONLY with the name of the appropriate downstream route
+based on the user's query.
+```
+
+### Python API
+
+```python
+from shopping_assistant.agent_definitions import RouterAgent
+from shopping_assistant.config import load_config
+
+config = load_config()  # loads default config.yml
+router = RouterAgent(config=config["agents"]["router"])
+```
+
+`RouterAgent` constructor accepts:
+
+| Parameter | Type | Description |
+|---|---|---|
+| `config` | `dict` | Agent config block (`config["agents"]["router"]`) |
+| `openai_client` | `openai.OpenAI \| None` | Optional pre-configured OpenAI client; defaults to `openai.OpenAI()` |
+
+### Usage
+
+`RouterAgent.run(state)` is called by LangGraph as a conditional edge from `START`. It can also be called directly:
+
+```python
+from shopping_assistant.agent_definitions import RouterAgent
+from shopping_assistant.config import load_config
+from shopping_assistant.graph.types import State
+
+config = load_config()
+router = RouterAgent(config=config["agents"]["router"])
+
+queries = [
+    "I am looking for headphones under 2000 rupees",
+    "Add the first item to my cart",
+    "What is your return policy?",
+]
+
+for query in queries:
+    state = State(messages=[{"role": "user", "content": query}])
+    route = router.run(state)
+    print(f"Query : {query!r}")
+    print(f"Route : {route!r}")
+    print()
+```
+
+### Output
+
+Returns one of the three route name strings — used by LangGraph to select the next node:
+
+```
+"product_search" | "shopping_actions" | "customer_service"
+```
+
+Example output:
+
+```
+Query : 'I am looking for black sunglasses under 100$'
+Route : 'product_search'
+
+Query : 'Add the first item to my cart'
+Route : 'shopping_actions'
+
+Query : 'What is your return policy?'
+Route : 'customer_service'
+```
