@@ -677,3 +677,69 @@ Shopping Actions Agent: The quantity of the "Southwest Bracelet" has been succes
 
 The total amount of your cart is $1009.93.
 ```
+
+---
+
+## Example Usage
+
+The `Chat` class (`shopping_assistant.chat`) is the high-level interface that wires together all agents, the LangGraph graph, Weaviate, and the Ecom API into a single session object.
+
+### Setup
+
+```python
+import os
+import weaviate
+from dotenv import load_dotenv
+from shopping_assistant.chat import Chat
+from shopping_assistant.config import load_config
+from shopping_assistant.external.ecom_api_client.client import EcomAPIClient
+from shopping_assistant.external.ecom_api_client.credentials import Credentials
+
+load_dotenv(".env")
+config = load_config()
+
+weaviate_client = weaviate.WeaviateClient(
+    connection_params=weaviate.connect.ConnectionParams(
+        http={"host": os.getenv("WEAVIATE_HTTP_HOST"), "port": os.getenv("WEAVIATE_HTTP_PORT"), "secure": False},
+        grpc={"host": os.getenv("WEAVIATE_GRPC_HOST"), "port": os.getenv("WEAVIATE_GRPC_PORT"), "secure": False},
+    )
+)
+
+ecom_api_client = EcomAPIClient(
+    base_url=os.getenv("ECOM_API_BASE_URL"),
+    credentials=Credentials(user_id=1),
+)
+
+chat = Chat(
+    config=config,
+    weaviate_client=weaviate_client,
+    ecom_api_client=ecom_api_client,
+)
+```
+
+### `Chat.query` — single-turn programmatic query
+
+Send a single message and get the agent's response as a string. Useful for programmatic usage or testing.
+
+```python
+import asyncio
+
+response = asyncio.run(chat.query("Do you have sunglasses under $50?"))
+print(response)
+```
+
+### `Chat.cli_chat` — interactive CLI session
+
+Starts an interactive terminal chat loop. Type `\quit` to exit.
+
+```python
+import asyncio
+
+asyncio.run(chat.cli_chat())
+```
+
+Or from the command line directly:
+
+```bash
+shopping-assistant chat --user-id 1 --env-file .env
+```
