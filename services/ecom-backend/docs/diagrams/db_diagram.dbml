@@ -1,0 +1,67 @@
+Table alembic_version {
+  version_num varchar(32) [pk]
+}
+
+Table product_hierarchy {
+  id integer [pk]
+  category_id integer
+  subcategory_id integer
+  category_name varchar
+  subcategory_name varchar
+  category_slug varchar
+  subcategory_slug varchar
+
+  Indexes {
+    (category_id, subcategory_id) [unique]
+  }
+}
+
+Table product {
+  id integer [pk]
+  category_id integer
+  subcategory_id integer
+  name varchar
+  slug varchar
+  description varchar
+  price float
+  created_at timestamp [default: `NOW()`]
+
+  Indexes {
+    (category_id, subcategory_id)
+  }
+}
+
+Table "user" {
+  id integer [pk]
+  first_name varchar
+  last_name varchar
+  role varchar(5) [default: 'user']
+  created_at timestamp [default: `NOW()`]
+}
+
+Table cart {
+  id integer [pk]
+  user_id integer
+  amount float
+  created_at timestamp [default: `NOW()`]
+}
+
+Table cart_item {
+  id integer [pk]
+  cart_id integer
+  product_id integer
+  quantity float
+  amount float
+}
+
+/* ---------------------- */
+/*       References       */
+/* ---------------------- */
+
+Ref: product.(category_id, subcategory_id) > product_hierarchy.(category_id, subcategory_id) [delete: cascade]
+
+Ref: cart.user_id > "user".id [delete: cascade]
+
+Ref: cart_item.cart_id > cart.id [delete: cascade]
+
+Ref: cart_item.product_id > product.id [delete: cascade]
