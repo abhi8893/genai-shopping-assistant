@@ -222,3 +222,62 @@ For agent-level architecture details (agent prompts, graph state, routing logic)
 
 ---
 
+## Example Usage
+
+Multi-turn conversation with `user_id=1`, `thread_id=1`, covering all four agents.
+
+**Turn 1 — CustomerServiceAgent (greeting)**
+
+```bash
+curl -X POST 'http://localhost:8010/chat' \
+  -H 'Content-Type: application/json' \
+  -d '{"user_id": "1", "query": "Hello!", "thread_id": "1"}'
+```
+
+```json
+{
+    "response": "Customer Service Agent: Hello! How can I assist you today?"
+}
+```
+
+**Turn 2 — ProductSearchAgent (product discovery)**
+
+```bash
+curl -X POST 'http://localhost:8010/chat' \
+  -H 'Content-Type: application/json' \
+  -d '{"user_id": "1", "query": "I am looking for black sunglasses under 100 dollars", "thread_id": "1"}'
+```
+
+```json
+{
+    "response": "Product Search Agent: I found the following products based on your query:\n\n1. trendy-tapered-sunglasses ($49.99)\n2. futura-sunglasses-in-aviator-style ($99.99)\n3. ivory-glitter-cat-eye-sunglasses ($99.99)\n4. vivid-rose-gold-aviator-sunglasses ($69.99)\n5. kaleidoscope-mirror-sunglasses ($49.99)"
+}
+```
+
+**Turn 3 — ShoppingActionsAgent (add to cart)**
+
+```bash
+curl -X POST 'http://localhost:8010/chat' \
+  -H 'Content-Type: application/json' \
+  -d '{"user_id": "1", "query": "Can you add the first one to my cart?", "thread_id": "1"}'
+```
+
+```json
+{
+    "response": "Shopping Actions Agent: The \"Trendy Tapered Sunglasses\" have been successfully added to your cart.\n\n### Current Cart:\n| Sno | Product                    | Qty | Amount  |\n|-----|----------------------------|-----|---------|\n| 1   | Southwest Bracelet         | 3   | $509.97 |\n| 2   | Floral Choker Necklace     | 2   | $259.98 |\n| 3   | Ivy Leaf Embroidered Skirt | 1   | $189.99 |\n| 4   | Trendy Tapered Sunglasses  | 2   | $99.98  |\n\n**Total: $1059.92**"
+}
+```
+
+**Turn 4 — CustomerServiceAgent (return policy)**
+
+```bash
+curl -X POST 'http://localhost:8010/chat' \
+  -H 'Content-Type: application/json' \
+  -d '{"user_id": "1", "query": "What is your return policy?", "thread_id": "1"}'
+```
+
+```json
+{
+    "response": "Customer Service Agent: Our return policy allows you to return most items within 30 days of receiving your order. Items must be unused, in their original packaging, and include all tags and labels. To initiate a return, visit the returns section of our website or contact customer service."
+}
+```
