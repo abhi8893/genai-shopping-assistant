@@ -86,3 +86,27 @@ To build and run the prod target, use the make target from the **repo root**:
 ```bash
 make app-prod SERVICES=shopping-assistant
 ```
+
+---
+
+## Setting Up External Connections
+
+### Service port
+
+| Variable | Description | Internal Port | Forwarded Port |
+|---|---|---|---|
+| `SHOPPING_ASSISTANT_PORT` | Port this service listens on | `8010` | `8010` |
+
+### External services
+
+This service connects to the following external services at runtime:
+
+| Service | Purpose |
+|---|---|
+| Weaviate | Vector search for product retrieval |
+| Ecom Backend API | Cart and product operations |
+| LLM provider | OpenAI / Anthropic / Cohere |
+| Langfuse | LLM observability (optional) |
+
+For the full list of env vars for each of these services, see [Setting Up External Connections](../../packages/shopping-assistant/README.md#setting-up-external-connections) in the `packages/shopping-assistant` README.
+
