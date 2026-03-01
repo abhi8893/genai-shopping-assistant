@@ -110,3 +110,24 @@ This service connects to the following external services at runtime:
 
 For the full list of env vars for each of these services, see [Setting Up External Connections](../../packages/shopping-assistant/README.md#setting-up-external-connections) in the `packages/shopping-assistant` README.
 
+---
+
+## How to Run
+
+Environment variables are configured in the `platform/app/` directory. Use the provided example files as a reference:
+
+- `platform/app/.env.example` — prod
+- `platform/app/.env.dev.example` — dev
+
+Copy the relevant example to `.env` / `.env.dev` and fill in your values before running.
+
+To run the service via Docker Compose from the **repo root**:
+
+```bash
+# Dev (hot reload, editable installs)
+make app-dev SERVICES=shopping-assistant
+
+# Prod
+make app-prod SERVICES=shopping-assistant
+```
+
