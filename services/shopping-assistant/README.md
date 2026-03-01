@@ -131,3 +131,21 @@ make app-dev SERVICES=shopping-assistant
 make app-prod SERVICES=shopping-assistant
 ```
 
+---
+
+## Tree Structure
+
+```
+services/shopping-assistant/
+├── app.py                          # FastAPI app — routes and startup
+├── Dockerfile                      # Multi-stage build (dev / prod)
+├── pyproject.toml                  # Dependencies and build config
+├── uv.lock                         # Locked dependency versions
+├── .shopping-assistant/
+│   └── config/config.yml           # Agent and LLM config (overrides package default)
+└── scripts/
+    └── ingest_product_data_into_vectorstore.py  # One-off product ingestion script
+```
+
+---
+
