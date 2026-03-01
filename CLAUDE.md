@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **GenAI Shopping Assistant** is a multi-agent LLM system that serves as an intelligent shopping companion for e-commerce websites. The project focuses primarily on the GenAI Shopping Assistant as the core component, with auxiliary services demonstrating real-world integration.
 
 ### Core Component: GenAI Shopping Assistant
-- **Multi-Agent System**: RouterAgent, ProductSearchAgent, ShopperAgent, CustomerServiceAgent
+- **Multi-Agent System**: RouterAgent, ProductSearchAgent, ShoppingActionsAgent, CustomerServiceAgent
 - **Natural Language Interface**: Users shop conversationally through specialized agents
 - **Intelligent Orchestration**: Central RouterAgent directs queries to appropriate specialized agents
 
@@ -21,7 +21,9 @@ The system includes essential services that demonstrate how the GenAI Shopping A
 
 **Current State (v0.x)**:
 - Main component: shopping-assistant (GenAI chatbot)
-- Tightly coupled auxiliary services for demo purposes (ecom-backend, product-retriever, memory)
+- Tightly coupled auxiliary services for demo purposes 
+  - Custom: ecom-backend
+  - Out of box: weaviate, langfuse, ollama
 - All services work together as an integrated system
 
 **Target State (v1.x+)**:
@@ -36,7 +38,7 @@ This is a Python monorepo organized around the **GenAI Shopping Assistant** as t
 - **`packages/`** - Core reusable packages
   - `shopping-assistant/` - **Primary Package**: Multi-agent LLM system with agent definitions, graph orchestration, and GenAI capabilities
 - **`services/`** - Deployable microservices demonstrating integration
-  - `shopping-assistant/` - **Core Service**: Gradio web app showcasing the GenAI Shopping Assistant
+  - `shopping-assistant/` - **Core Service**: FastAPI service exposing the GenAI Shopping Assistant via `POST /chat`
   - `ecom-backend/` - **Auxiliary Service**: FastAPI backend for e-commerce operations (demonstrates integration)
   - `product-retriever/` - **Auxiliary Service**: Vector-based product search (demonstrates integration)
 - **`platform/`** - Infrastructure and deployment configuration
@@ -44,6 +46,8 @@ This is a Python monorepo organized around the **GenAI Shopping Assistant** as t
   - `observability/` - Langfuse deployment for LLM observability
 - **`data/`** - Product data and datasets
 - **`notebooks/`** - Jupyter notebooks for experimentation
+- **`scripts/`** - Monorepo tooling (venv management, direnv setup)
+- **`playground/`** - Ad-hoc exploration scripts
 
 ## Common Commands
 
@@ -99,7 +103,7 @@ make app-dev  # or make app-prod
 The application stack includes:
 - **Weaviate** - Vector database for semantic product search
 - **Ollama** - Local LLM inference (used by Weaviate modules)
-- **shopping-assistant** - Main chatbot service (Gradio UI)
+- **shopping-assistant** - Main chatbot service (FastAPI on port 8010)
 - **ecom-backend** - E-commerce API (SQLite database)
 
 ### Running Individual Services
@@ -114,7 +118,38 @@ python app.py  # Runs on http://localhost:8000
 **Shopping Assistant Service:**
 ```bash
 cd services/shopping-assistant
-python app.py  # Runs Gradio app
+python app.py  # Runs FastAPI/uvicorn on http://localhost:8010
+```
+
+API routes:
+
+| Method | Route | Description |
+|---|---|---|
+| `GET` | `/` | Service info |
+| `GET` | `/health` | Health check |
+| `POST` | `/chat` | Send message (body: `user_id`, `thread_id`, `query`) |
+
+### Shopping Assistant Package CLI
+
+The `shopping-assistant` package exposes a CLI and a high-level `Chat` class (`shopping_assistant.chat`):
+
+```bash
+# Scaffold .env + config for a new deployment
+shopping-assistant create new <out_dir>
+
+# Run interactive CLI chat
+shopping-assistant chat --mode cli --user-id 1 --env-file .env
+
+# Launch Gradio web UI (package-level, not the service)
+shopping-assistant chat --mode web --user-id 1 --env-file .env
+```
+
+### Package Installation
+
+The package is not on PyPI. Install directly from GitHub:
+
+```bash
+uv pip install "git+https://github.com/abhi8893/genai-shopping-assistant.git@<version>#subdirectory=packages/shopping-assistant"
 ```
 
 ### Data Ingestion
@@ -137,11 +172,11 @@ The core **shopping-assistant** uses a multi-agent architecture defined in `pack
    - Parses complex queries to extract category, subcategory, price range, attributes
    - Generates clarifying responses when user intent is ambiguous
    - Retrieves products from Weaviate vector store with semantic understanding
-3. **ShopperAgent** (`agent_definitions/shopping_actions.py`) - **Shopping Actions Specialist**: Performs cart operations, checkout, order management, and purchase workflows
+3. **ShoppingActionsAgent** (`agent_definitions/shopping_actions.py`) - **Shopping Actions Specialist**: Performs cart operations, checkout, order management, and purchase workflows
 4. **CustomerServiceAgent** (`agent_definitions/customer_service.py`) - **Support Specialist**: Handles general inquiries, customer service, and non-shopping conversations
 
 ### Agent Configuration & Orchestration
-- **Configuration**: Agent prompts, LLM models, routing rules in `services/shopping-assistant/config.yml`
+- **Configuration**: Agent prompts, LLM models, routing rules in `services/shopping-assistant/.shopping-assistant/config/config.yml`
 - **Orchestration**: LangGraph-based coordination in `packages/shopping-assistant/src/shopping_assistant/graph/`
 - **Multi-Agent Flow**: RouterAgent → Specialized Agent → Response Generation → User
 
@@ -161,6 +196,8 @@ Domains are organized by entity:
 - `domains/users/` - User management APIs
 
 Database migrations are managed with Alembic (`migrations/`).
+
+**Authentication**: All cart endpoints require an `X-User-Id: <int>` header (simplified placeholder auth, not JWT). Missing header returns `401`; unknown user ID returns `404`.
 
 **Note**: In the target architecture (v1.x+), this service will be replaceable with standard e-commerce platforms (Shopify, WooCommerce) via Bring-YOS integrations.
 
@@ -189,6 +226,7 @@ The **GenAI Shopping Assistant** integrates with auxiliary services to demonstra
 - **GenAI Shopping Assistant → Ecom Backend**: The multi-agent system calls the ecom backend API at `ECOM_API_BASE_URL` for cart/product operations
 - **GenAI Shopping Assistant → Weaviate**: Product embeddings are stored in Weaviate for semantic search by the ProductSearchAgent
 - **All Services → Langfuse**: LLM tracing and observability for monitoring multi-agent performance (configured via `LANGFUSE_*` env vars)
+- **Shopping Assistant → Logfire**: Structured application logging via OpenTelemetry (configured via `LOGFIRE_*` env vars)
 - **Weaviate → Ollama**: Weaviate uses Ollama for text embeddings (`text2vec-ollama` module)
 
 **Future Integration Architecture**:
