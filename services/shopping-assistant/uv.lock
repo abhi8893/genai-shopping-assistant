@@ -2602,6 +2602,7 @@ name = "shopping-assistant"
 version = "0.1.0"
 source = { directory = "../../packages/shopping-assistant" }
 dependencies = [
+    { name = "click" },
     { name = "gradio" },
     { name = "langchain" },
     { name = "langchain-community" },
@@ -2617,6 +2618,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "click" },
     { name = "gradio" },
     { name = "langchain" },
     { name = "langchain-community" },
