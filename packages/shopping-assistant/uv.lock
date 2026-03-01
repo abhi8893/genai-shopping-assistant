@@ -3440,6 +3440,7 @@ name = "shopping-assistant"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "click" },
     { name = "gradio" },
     { name = "langchain" },
     { name = "langchain-community" },
@@ -3469,6 +3470,7 @@ test = [
 
 [package.metadata]
 requires-dist = [
+    { name = "click" },
     { name = "gradio" },
     { name = "langchain" },
     { name = "langchain-community" },
