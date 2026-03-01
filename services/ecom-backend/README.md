@@ -184,7 +184,7 @@ The service follows a 3-tier architecture. Each domain is self-contained with it
 
 ```mermaid
 flowchart TD
-    Client["Client <br> (shopping-assistant / curl)"]
+    Client["Client <br> (shopping-assistant / other clients)"]
 
     subgraph API["API Layer  ·  domains/*/api/router.py"]
         PR["Products Router"]
