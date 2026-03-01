@@ -9,6 +9,9 @@ export REPO_ROOT
 APP_COMPOSE=platform/app/docker-compose.yml
 APP_COMPOSE_DEV=platform/app/docker-compose.dev.yml
 LANGFUSE_COMPOSE=platform/observability/docker-compose.langfuse.yml
+comma := ,
+SERVICES_NORMALIZED := $(subst $(comma), ,$(SERVICES))
+
 
 langfuse-dev:
 	set -a; \
@@ -30,8 +33,7 @@ langfuse-prod:
 		up -d
 
 
-# Example usage: make app-dev SERVICES=shopping-assistant ecom-backend
-# $(if $(SERVICES),up --build -d --scale $(SERVICES)=0,$(if $(BUILD),build,$(if $(UP),up -d --build,$(error Please specify either BUILD, UP or SERVICES))))
+# Example usage: make app-dev SERVICES=shopping-assistant,ecom-backend
 
 app-dev:
 	set -a; \
@@ -42,7 +44,7 @@ app-dev:
 		-p app-dev \
 		-f $(APP_COMPOSE) \
 		-f $(APP_COMPOSE_DEV) \
-		up --build -d
+		up -d $(SERVICES_NORMALIZED)
 
 app-prod:
 	set -a; \
@@ -51,7 +53,7 @@ app-prod:
 	docker compose \
 		-p app-prod \
 		-f $(APP_COMPOSE) \
-		up --build -d
+		up -d $(SERVICES_NORMALIZED)
 
 local-run-dev:
 	make langfuse-dev
