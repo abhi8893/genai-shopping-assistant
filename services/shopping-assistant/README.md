@@ -52,3 +52,37 @@ source .venv-dev/bin/activate
 uv pip install -e "." --group dev
 ```
 
+---
+
+## Dockerfile
+
+The Dockerfile uses a **multi-stage build** with a shared `base` stage and two targets: `dev` and `prod`.
+
+### Base stage
+
+Starts from `python:3.12-slim`, installs `uv`, and sets `/project` as the working directory.
+
+### Dev target
+
+- Copies `pyproject.toml` manifests first to maximise Docker layer caching
+- Copies the full service and package source (these are overridden by volume mounts at runtime, enabling hot reload)
+- Installs both the service and the `packages/shopping-assistant` package as **editable installs** (`-e`) with dev dependencies
+- Runs `uvicorn` with `--reload` on port `8010`
+
+To build and run the dev target, use the make target from the **repo root**:
+
+```bash
+make app-dev SERVICES=shopping-assistant
+```
+
+### Prod target
+
+- Copies source directly (no volume mounts)
+- Installs dependencies via `uv sync --locked --no-dev` — **no editable installs**, uses the lock file, dev dependencies excluded
+- Runs `uvicorn` without `--reload` on port `8010`
+
+To build and run the prod target, use the make target from the **repo root**:
+
+```bash
+make app-prod SERVICES=shopping-assistant
+```
