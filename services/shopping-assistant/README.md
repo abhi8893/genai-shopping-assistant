@@ -149,3 +149,58 @@ services/shopping-assistant/
 
 ---
 
+## Architecture
+
+The service exposes a single `POST /chat` endpoint that drives the multi-agent LangGraph pipeline from the `shopping-assistant` package.
+
+```mermaid
+graph TD
+    Client(["HTTP Client"])
+
+    subgraph SVC["shopping-assistant service"]
+        API["POST /chat"]
+        START(["START"])
+        END(["END"])
+
+        API --> START
+        START -->|"conditional edge"| Router
+
+        subgraph Router["RouterAgent"]
+            R["Classify intent"]
+        end
+
+        Router -->|product_search| PS
+        Router -->|shopping_actions| SA
+        Router -->|customer_service| CS
+
+        subgraph PS["ProductSearchAgent"]
+            PS1["Parse query + semantic search"]
+        end
+
+        subgraph SA["ShoppingActionsAgent"]
+            SA1["Cart operations via tools"]
+        end
+
+        subgraph CS["CustomerServiceAgent"]
+            CS1["General support & FAQ"]
+        end
+
+        PS --> END
+        SA --> END
+        CS --> END
+    end
+
+    Client -->|"POST /chat"| API
+    END -->|"JSON response"| Client
+
+    PS1 <-->|"WeaviateConnectionManager"| Weaviate[("Weaviate<br>vector DB")]
+    SA1 <-->|"EcomAPIClient"| EcomAPI[("Ecom<br>Backend API")]
+
+    subgraph Footer["LLM Observability Layer (Langfuse)"]
+    end
+```
+
+For agent-level architecture details (agent prompts, graph state, routing logic), see the [Architecture](../../packages/shopping-assistant/README.md#architecture) section of the `packages/shopping-assistant` README.
+
+---
+
