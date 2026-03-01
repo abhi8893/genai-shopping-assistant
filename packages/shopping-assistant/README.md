@@ -64,10 +64,10 @@ Run the following to scaffold a new project directory with an example config and
 shopping-assistant create new .
 ```
 
-This creates `.env.example` (and `config/config.yml`) in the current directory. Copy it to `.env` and fill in your values:
+This creates `.env.example` (and `config/config.yml`) in `.shopping-assistant` in the current directory. Copy it to `.env` and fill in your values:
 
 ```bash
-cp .env.example .env
+cp .shopping-assistant/.env.example .shopping-assistant/.env
 ```
 
 ### Weaviate
