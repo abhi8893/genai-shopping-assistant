@@ -204,3 +204,21 @@ For agent-level architecture details (agent prompts, graph state, routing logic)
 
 ---
 
+## API Routes
+
+| Method | Route | Description |
+|---|---|---|
+| `GET` | `/` | Service info and available endpoints |
+| `GET` | `/health` | Health check |
+| `POST` | `/chat` | Send a message to the shopping assistant |
+
+### `POST /chat` request body
+
+| Field | Type | Description |
+|---|---|---|
+| `user_id` | `str` | User identifier |
+| `thread_id` | `str` | Conversation thread identifier |
+| `query` | `str` | User message |
+
+---
+
