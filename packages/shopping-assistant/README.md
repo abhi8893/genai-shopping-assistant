@@ -199,6 +199,12 @@ The package implements a **multi-agent LangGraph pipeline**. A central `RouterAg
 | `ShoppingActionsAgent` | Manages cart operations (add, remove, view, checkout) via function tools | OpenAI Agents SDK (`Agent` + `Runner`) | Ecom Backend API |
 | `CustomerServiceAgent` | Handles general support, FAQs, and off-topic queries | OpenAI chat | — |
 
+
+### Observability
+
+The package uses [Langfuse](https://langfuse.com) to track LLM traces and [Logfire](https://logfire.dev) to track logs. These are optional but recommended for monitoring agent behaviour.
+
+
 ### Graph Flow
 
 ```mermaid
@@ -242,7 +248,11 @@ graph TD
 
     PS2 <-->|"WeaviateConnectionManager"| Weaviate[("Weaviate<br>vector DB")]
     SA2 <-->|"EcomAPIClient"| EcomAPI[("Ecom<br>Backend API")]
+
+    subgraph Footer["LLM Observability Layer (Langfuse)"]
+    end
 ```
+
 
 ### Graph State
 
@@ -743,6 +753,73 @@ Or from the command line directly:
 ```bash
 shopping-assistant chat --user-id 1 --env-file .env
 ```
+
+## Observability
+
+The package uses [Langfuse](https://langfuse.com) to track LLM traces and [Logfire](https://logfire.dev) to track logs. These are optional but recommended for monitoring agent behaviour.
+
+| Variable | Description | Default |
+|---|---|---|
+| `LANGFUSE_PUBLIC_KEY` | Langfuse project public key | — |
+| `LANGFUSE_SECRET_KEY` | Langfuse project secret key | — |
+| `LANGFUSE_BASE_URL` | Langfuse server URL | `http://localhost:3000` |
+
+
+### Establishing connectivity
+
+`configure_langfuse()` (from `shopping_assistant.observability.utils`) initialises the full observability stack at startup:
+
+1. Requires `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, `LANGFUSE_BASE_URL`
+2. Sets OpenTelemetry OTLP endpoint headers to route traces to Langfuse
+3. Configures `logfire` and calls `logfire.instrument_openai_agents()` to automatically patch the OpenAI Agents SDK — this emits structured spans for every agent turn and tool call
+4. Returns a `Langfuse` client
+
+`langfuse_auth_check(langfuse)` verifies the client can authenticate before attaching trace handlers. It is called in `Chat.run_config` each time the graph is invoked — if the check fails, the `LangfuseCallbackHandler` is silently skipped rather than erroring.
+
+**Preflight check** (`shopping_assistant.observability.preflight.langfuse_auth_check_preflight`): makes a lightweight HTTP GET to `{LANGFUSE_HOST}/api/public/projects` to verify the Langfuse server is reachable before the session starts. This is not currently called in the main flow but is available for use cases that need an explicit connectivity validation step before initialising the full stack (e.g. in a health check or startup hook).
+
+### Tracing LLM calls
+
+Two complementary tracing mechanisms are used:
+
+**`@langfuse_observe`** — decorator from `langfuse` that wraps a function as a named span. Used to trace specific functions in the product search flow:
+
+| Location | Span name | Type |
+|---|---|---|
+| `product_retrieval.py` | `retrieve-products` | `retriever` |
+| `agent_definitions/product_search.py` | `create-product-retrieval-response` | `span` |
+
+```python
+@langfuse_observe(name="retrieve-products", as_type="retriever")
+def retrieve_products(  # noqa: PLR0913
+    query: str = None,
+    categories: list[str] = None,
+    subcategories: list[str] = None,
+    min_price: float = None,
+    max_price: float = None,
+    n: int = 5,
+    weaviate_client: WeaviateClient = None,
+):
+
+```
+
+```python
+@langfuse_observe(name="create-product-retrieval-response", as_type="span")
+def _create_product_retrieval_response(
+    products_retrieved: list[ProductVectorDBRecord],
+) -> str:
+```
+
+This makes individual retrieval steps visible as discrete events in the Langfuse trace timeline, independent of the LangGraph execution.
+
+**`LangfuseCallbackHandler`** — a LangChain/LangGraph callback that automatically captures every graph node entry/exit, including which agent was invoked, the input state, and the output. It is attached via `Chat.run_config["callbacks"]` and fires on every `graph.ainvoke()` call. This is the primary mechanism for tracing the full multi-agent turn end-to-end.
+
+Together, `@langfuse_observe` provides fine-grained span-level visibility inside agents, while `LangfuseCallbackHandler` provides graph-level trace coverage across the full routing and response flow.
+
+### Examples
+
+_Screenshots to be added._
+
 
 ---
 
