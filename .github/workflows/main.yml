@@ -29,7 +29,7 @@ jobs:
       - name: Setup code quality env
         run: |
           make venv-create COMPONENT=root GROUP=ci
-          make venv-switch COMPONENT=root GROUP=ci
+          make venv-switch COMPONENT=root TARGET=ci
 
       - name: Run code quality checks
         run: make SKIP=no-commit-to-branch check-all
