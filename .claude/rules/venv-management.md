@@ -15,15 +15,25 @@ The monorepo uses a standardized virtual environment management system with Make
 - `.venv-{group}`: Custom group virtual environment
 - `.venv`: Active/current virtual environment (renamed from `.venv-{id}`)
 
+**Component Identification**:
+Components are identified by path in make targets:
+- `root` - Special identifier for the repository root directory itself
+- `packages/shopping-assistant` - Components under packages/
+- `services/ecom-backend` - Components under services/
+
 **State Tracking (`.info.json`)**:
 Each component has a `.info.json` file with `venv` key that tracks:
 - `options`: Array of ALL available venvs (union of physical `.venv-*` directories + active venv)
 - `active`: Currently active venv name (what `.venv` represents), or `null` if none active
+- Located at component root: `/.info.json` (for root), `packages/shopping-assistant/.info.json`, etc.
 
 ### Creating Virtual Environments
 
 **Create venv for a single component**:
 ```bash
+# Create root dev venv (editable install)
+make venv-create COMPONENT=root GROUP=dev
+
 # Create dev venv (editable install)
 make venv-create COMPONENT=packages/shopping-assistant GROUP=dev
 
@@ -34,14 +44,23 @@ make venv-create COMPONENT=services/ecom-backend GROUP=prod
 make venv-create COMPONENT=services/shopping-assistant GROUP=test
 ```
 
+**Special: Root project venvs**:
+The special component identifier `"root"` refers to the repository root itself:
+- Maps to the root `/pyproject.toml` and root directory
+- Useful for monorepo-level tools (pre-commit, documentation generators, etc.)
+- Venvs created at repository root: `.venv-dev/`, `.venv-prod/`, etc.
+- State tracked in `/.info.json`
+
 **Create venvs for all components at once**:
 ```bash
-# Create dev venvs for all components
+# Create dev venvs for all components (including root)
 make venv-create-all GROUP=dev
 
-# Create prod venvs for all components
+# Create prod venvs for all components (including root)
 make venv-create-all GROUP=prod
 ```
+
+**Note**: `venv-create-all` processes all components in order: `root` first, then packages and services. Root is always the first component in the list.
 
 **What happens during creation**:
 1. Creates `.venv-{group}` directory using `uv venv --python 3.12`
@@ -212,15 +231,51 @@ make venv-pin-python-all
 make venv-pin-python-all PYTHON_VERSION=3.13
 ```
 
+### Root Project Venv
+
+The repository root has its own `pyproject.toml` with root-level dependencies:
+
+```toml
+[dependency-groups]
+dev = [
+    "pre-commit"
+]
+```
+
+**Create and use root dev venv**:
+```bash
+# Create root dev venv with pre-commit and dependencies
+make venv-create COMPONENT=root GROUP=dev
+
+# Switch to root dev venv
+make venv-switch COMPONENT=root TARGET=dev
+
+# Activate the root venv
+source .venv/bin/activate
+
+# Verify pre-commit is available
+pre-commit --version
+```
+
+**Root venv use cases**:
+- Install monorepo-level tools (pre-commit, documentation generators)
+- Run root-level scripts and utilities
+- Create isolated root environment for container builds
+- Pin development tools independent of component venvs
+
 ### Common Venv Workflows
 
 **Setting up a new development environment**:
 ```bash
-# Create dev venvs for all components
+# Create dev venvs for all components (including root)
 make venv-create-all GROUP=dev
 
-# Activate the venv for the component you're working on
-source packages/shopping-assistant/.venv-dev/bin/activate
+# Activate the root venv (for pre-commit and monorepo tools)
+make venv-switch COMPONENT=root TARGET=dev
+source .venv/bin/activate
+
+# Then activate the venv for the component you're working on
+source packages/shopping-assistant/.venv/bin/activate
 
 # Verify all .info.json files are valid
 make venv-refresh-all

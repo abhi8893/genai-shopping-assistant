@@ -53,7 +53,12 @@ def main() -> int:
         for component in components:
             print()
             print(f"==> {component}")
-            result = build_lockfile(repo_root / component)
+            if component == "root":
+                component_path = repo_root
+            else:
+                component_path = repo_root / component
+
+            result = build_lockfile(component_path)
             if result != 0:
                 failed += 1
 
@@ -64,7 +69,12 @@ def main() -> int:
 
         print("✓ All lockfiles built successfully")
         return 0
-    component_path = repo_root / args.component
+
+    if args.component == "root":
+        component_path = repo_root
+    else:
+        component_path = repo_root / args.component
+
     if not component_path.exists():
         print(
             f"Error: Component path does not exist: {component_path}",

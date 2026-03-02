@@ -23,7 +23,10 @@ def clean_venvs(  # noqa: C901, PLR0912
             If None, cleans all venvs.
         clear_info: Whether to clear the .info.json file after cleaning
     """
-    component_path = repo_root / component
+    if component == "root":
+        component_path = repo_root
+    else:
+        component_path = repo_root / component
 
     if not component_path.exists():
         print(

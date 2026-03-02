@@ -20,7 +20,10 @@ def refresh_info_json(repo_root: Path, component: str, fix_active: bool = False)
     Returns:
         0 if successful, 1 if there are validation errors
     """
-    component_path = repo_root / component
+    if component == "root":
+        component_path = repo_root
+    else:
+        component_path = repo_root / component
 
     if not component_path.exists():
         print(

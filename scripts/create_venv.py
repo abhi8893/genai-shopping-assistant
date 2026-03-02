@@ -88,9 +88,13 @@ def patch_activate_scripts(venv_path: Path, prompt: str) -> None:
             script.write_text(content.replace(old, new))
 
 
-def create_venv(repo_root: Path, component: str, group: str) -> int:
+def create_venv(repo_root: Path, component: str, group: str) -> int:  # noqa: C901, PLR0912
     """Create a virtual environment for the specified component and group."""
-    component_path = repo_root / component
+
+    if component == "root":
+        component_path = repo_root
+    else:
+        component_path = repo_root / component
 
     if not component_path.exists():
         print(
