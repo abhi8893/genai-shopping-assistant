@@ -28,12 +28,8 @@ jobs:
 
       - name: Setup code quality env
         run: |
-          uv venv .venv-checks --python ${{ env.PYTHON_VERSION }}
-          source .venv-checks/bin/activate
-
-          uv pip install pre-commit
+          make venv-create COMPONENT=root TARGET=ci
+          make venv-switch COMPONENT=root TARGET=ci
 
       - name: Run code quality checks
-        run: |
-          source .venv-checks/bin/activate
-          SKIP=no-commit-to-branch make check-all
+        run: make SKIP=no-commit-to-branch check-all
