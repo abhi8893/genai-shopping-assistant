@@ -36,3 +36,18 @@ jobs:
         run: |
           source .venv/bin/activate
           make SKIP=no-commit-to-branch check-all
+
+  # build:
+  #   name: Build packages
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
+    
+  #     - name: Build packages/shopping-assistant
+  #       run: |
+  #         make venv-create COMPONENT=shopping-assistant
+  #         make venv-switch COMPONENT=shopping-assistant TARGET=prod
+  #         source .venv/bin/activate
+  #         cd packages/shopping-assistant
+  #         uv build

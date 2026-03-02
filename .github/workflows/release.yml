@@ -1,0 +1,203 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      publish_tag:
+        description: "Create and push a git tag"
+        type: boolean
+        default: false
+      publish_github_release:
+        description: "Create a GitHub release"
+        type: boolean
+        default: false
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  setup:
+    name: Setup Release Info
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag_name: ${{ steps.tag.outputs.tag_name }}
+      is_stable: ${{ steps.release_type.outputs.is_stable }}
+      publish_tag: ${{ steps.effective_inputs.outputs.publish_tag }}
+      publish_github_release: ${{ steps.effective_inputs.outputs.publish_github_release }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Read version from pyproject.toml
+        id: version
+        run: |
+          VERSION=$(python3 -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Read version: $VERSION"
+
+      - name: Determine release type
+        id: release_type
+        run: |
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            echo "is_stable=true" >> $GITHUB_OUTPUT
+            echo "Release type: STABLE (main branch)"
+          else
+            echo "is_stable=false" >> $GITHUB_OUTPUT
+            echo "Release type: DEV (${{ github.ref_name }} branch)"
+          fi
+
+      - name: Compute tag name
+        id: tag
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          if [ "${{ steps.release_type.outputs.is_stable }}" = "true" ]; then
+            TAG_NAME="v${VERSION}"
+          else
+            TAG_NAME="v${VERSION}-dev.${{ github.run_number }}"
+          fi
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "Tag name: $TAG_NAME"
+
+      - name: Compute effective inputs
+        id: effective_inputs
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "publish_tag=true" >> $GITHUB_OUTPUT
+            echo "publish_github_release=true" >> $GITHUB_OUTPUT
+            echo "Push to main: auto-publishing enabled"
+          else
+            echo "publish_tag=${{ inputs.publish_tag }}" >> $GITHUB_OUTPUT
+            echo "publish_github_release=${{ inputs.publish_github_release }}" >> $GITHUB_OUTPUT
+            echo "Manual dispatch: publish_tag=${{ inputs.publish_tag }}, publish_github_release=${{ inputs.publish_github_release }}"
+          fi
+
+  validate:
+    name: Validate Release
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check tag doesn't already exist
+        run: |
+          TAG="${{ needs.setup.outputs.tag_name }}"
+          if git ls-remote --tags origin "refs/tags/${TAG}" | grep -q "${TAG}"; then
+            echo "Error: Tag ${TAG} already exists!"
+            exit 1
+          fi
+          echo "✓ Tag ${TAG} does not exist"
+
+      - name: Validate version is greater than latest
+        run: |
+          VERSION="${{ needs.setup.outputs.version }}"
+
+          # Get all version tags (excluding dev tags)
+          LATEST_TAG=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' | grep -v '\-dev\.' | sort -V | tail -n 1)
+
+          if [ -z "$LATEST_TAG" ]; then
+            echo "✓ No existing stable tags found, version $VERSION is valid for initial release"
+          else
+            LATEST_VERSION="${LATEST_TAG#v}"
+            echo "Latest stable tag: $LATEST_TAG (version: $LATEST_VERSION)"
+            echo "New version: $VERSION"
+
+            # Simple version comparison using sort -V
+            HIGHER=$(printf '%s\n' "$VERSION" "$LATEST_VERSION" | sort -V | tail -n 1)
+
+            if [ "$HIGHER" = "$VERSION" ] && [ "$VERSION" != "$LATEST_VERSION" ]; then
+              echo "✓ Version $VERSION is greater than $LATEST_VERSION"
+            else
+              echo "Error: Version $VERSION must be greater than $LATEST_VERSION"
+              exit 1
+            fi
+          fi
+
+      - name: Validate CHANGELOG entry (stable only)
+        if: needs.setup.outputs.is_stable == 'true'
+        run: |
+          VERSION="${{ needs.setup.outputs.version }}"
+          if ! grep -q "^## v${VERSION}" CHANGELOG.md; then
+            echo "Error: No CHANGELOG.md entry found for v${VERSION}"
+            echo "Expected to find a section like: '## v${VERSION} (...)'"
+            exit 1
+          fi
+          echo "✓ CHANGELOG.md entry found for v${VERSION}"
+
+  run_tests:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: Note - no tests configured
+        run: |
+          echo "No test suite configured yet. Skipping test run."
+          echo "TODO: Add test execution here when test suite is set up"
+
+  tag_and_release:
+    name: Tag and Release
+    runs-on: ubuntu-latest
+    needs: [setup, validate, run_tests]
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+
+      - name: Create and push tag
+        if: needs.setup.outputs.publish_tag == 'true'
+        run: |
+          TAG="${{ needs.setup.outputs.tag_name }}"
+          echo "Creating tag: $TAG"
+          git tag "$TAG"
+          git push origin "$TAG"
+          echo "✓ Tag $TAG created and pushed"
+
+      - name: Extract release notes from CHANGELOG
+        id: release_notes
+        run: |
+          VERSION="${{ needs.setup.outputs.version }}"
+          NOTES=$(awk "/^## v${VERSION}/{found=1; next} found && /^## /{exit} found{print}" CHANGELOG.md)
+
+          # Use a delimiter to handle multiline output
+          EOF=$(openssl rand -hex 8)
+          echo "body<<$EOF" >> $GITHUB_OUTPUT
+          echo "$NOTES" >> $GITHUB_OUTPUT
+          echo "$EOF" >> $GITHUB_OUTPUT
+
+          echo "Extracted release notes:"
+          echo "$NOTES"
+
+      - name: Create GitHub Release
+        if: needs.setup.outputs.publish_github_release == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.setup.outputs.tag_name }}
+          name: ${{ needs.setup.outputs.tag_name }}
+          body: ${{ steps.release_notes.outputs.body }}
+          prerelease: ${{ needs.setup.outputs.is_stable != 'true' }}
+          draft: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
