@@ -40,45 +40,16 @@ jobs:
         id: release_info
         run: |
           BRANCH="${{ github.ref_name }}"
-          VERSION=$(python3 scripts/ci/get_version.py --repo-root ${{ github.workspace }})
+          REPO_ROOT="${{ github.workspace }}"
+
+          OUTPUT=$(bash scripts/ci/determine_release_info.sh "$BRANCH" "$REPO_ROOT")
+
+          VERSION=$(echo "$OUTPUT" | grep '^VERSION=' | cut -d= -f2-)
+          TAG_NAME=$(echo "$OUTPUT" | grep '^TAG_NAME=' | cut -d= -f2-)
+          RELEASE_TYPE=$(echo "$OUTPUT" | grep '^RELEASE_TYPE=' | cut -d= -f2-)
 
           echo "Branch: $BRANCH"
           echo "Version from pyproject.toml: $VERSION"
-
-          if [ "$BRANCH" = "main" ]; then
-            RELEASE_TYPE="stable"
-            if ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
-              echo "Error: Stable release requires X.Y.Z version format, got: $VERSION"
-              exit 1
-            fi
-
-          elif echo "$BRANCH" | grep -qE '^release/v[0-9]+\.[0-9]+\.[0-9]+$'; then
-            RELEASE_TYPE="rc"
-            if ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+-rc[0-9]+$'; then
-              echo "Error: RC release requires X.Y.Z-rcN version format, got: $VERSION"
-              exit 1
-            fi
-            BASE_VERSION="${VERSION%-rc*}"
-            BRANCH_VERSION="${BRANCH#release/v}"
-            if [ "$BASE_VERSION" != "$BRANCH_VERSION" ]; then
-              echo "Error: Version base $BASE_VERSION does not match branch version $BRANCH_VERSION"
-              exit 1
-            fi
-
-          elif [ "$BRANCH" = "develop" ]; then
-            RELEASE_TYPE="dev"
-            if ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+-dev[0-9]+$'; then
-              echo "Error: Dev release requires X.Y.Z-devN version format, got: $VERSION"
-              exit 1
-            fi
-
-          else
-            echo "Error: Releases can only be triggered from develop, release/vX.Y.Z, or main"
-            echo "Current branch: $BRANCH"
-            exit 1
-          fi
-
-          TAG_NAME="v${VERSION}"
           echo "Release type: $RELEASE_TYPE"
           echo "Tag name: $TAG_NAME"
 
