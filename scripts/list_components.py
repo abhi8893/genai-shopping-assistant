@@ -8,7 +8,7 @@ from pathlib import Path
 
 def list_components(repo_root: Path) -> list[str]:
     """Find all components with pyproject.toml files."""
-    components = []
+    components = ["root"]
 
     # Search in packages/ and services/ directories
     search_dirs = ["packages", "services"]
@@ -28,7 +28,7 @@ def list_components(repo_root: Path) -> list[str]:
             component_path = pyproject_file.parent.relative_to(repo_root)
             components.append(str(component_path))
 
-    return sorted(components)
+    return [components[0]] + sorted(components[1:])
 
 
 def main():

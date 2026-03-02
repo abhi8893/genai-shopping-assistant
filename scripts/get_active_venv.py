@@ -12,7 +12,13 @@ from list_components import list_components  # noqa: E402
 
 def get_venv_info(repo_root: Path, component: str) -> tuple[str, str]:
     """Return (active, options_str) for a component from its .info.json."""
-    info_file = repo_root / component / ".info.json"
+
+    if component == "root":
+        component_path = repo_root
+    else:
+        component_path = repo_root / component
+
+    info_file = component_path / ".info.json"
     if not info_file.exists():
         return "null", ""
 

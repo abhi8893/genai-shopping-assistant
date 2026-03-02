@@ -13,7 +13,7 @@ sys.path.insert(0, str(scripts_dir))
 from repair_venv_references import repair_venv_references  # noqa: E402
 
 
-def switch_venv(repo_root: Path, component: str, target_venv: str) -> int:  # noqa: C901,PLR0915
+def switch_venv(repo_root: Path, component: str, target_venv: str) -> int:  # noqa: C901,PLR0915,PLR0912
     """Switch to a different virtual environment.
 
     Args:
@@ -24,7 +24,10 @@ def switch_venv(repo_root: Path, component: str, target_venv: str) -> int:  # no
     Returns:
         0 if successful, 1 if there are errors
     """
-    component_path = repo_root / component
+    if component == "root":
+        component_path = repo_root
+    else:
+        component_path = repo_root / component
 
     if not component_path.exists():
         print(
