@@ -25,14 +25,14 @@ This document describes the release workflow for the GenAI Shopping Assistant mo
 develop branch
     ↓
 Trigger: workflow_dispatch
-Tag: v0.1.0-dev1 (no GitHub release)
+Tag: v0.1.0-dev.1 (no GitHub release)
     ↓
     └─→ Cut release/v0.1.0 branch
             ↓
         Trigger: workflow_dispatch (per RC)
-        Tag: v0.1.0-rc0, v0.1.0-rc1, ... (pre-release)
+        Tag: v0.1.0-rc.0, v0.1.0-rc.1, ... (pre-release)
             ↓
-        Fix bugs? → Bump rcN, repeat
+        Fix bugs? → Bump rc.N, repeat
             ↓
 main branch (via PR merge)
     ↓
@@ -48,8 +48,8 @@ Auto sync: PR main → develop, auto-merge, delete release branch
 
 | Branch | Purpose | Release Type | Version Format | Who Creates |
 |--------|---------|--------------|----------------|-------------|
-| `develop` | Ongoing development | dev | `X.Y.Z-devN` | team |
-| `release/vX.Y.Z` | Feature freeze, stabilization | rc | `X.Y.Z-rcN` | release engineer |
+| `develop` | Ongoing development | dev | `X.Y.Z-dev.N` | team |
+| `release/vX.Y.Z` | Feature freeze, stabilization | rc | `X.Y.Z-rc.N` | release engineer |
 | `main` | Production-ready | stable | `X.Y.Z` | merge after RC approval |
 
 ---
@@ -59,17 +59,17 @@ Auto sync: PR main → develop, auto-merge, delete release branch
 To bump versions across all components (unified monorepo), use the **`scripts/ci/bump_version.py`** script:
 
 ```bash
-# Dry run (shows what would change, doesn't modify files)
+# Show what would change (displays before/after versions in a table)
 python3 scripts/ci/bump_version.py \
   --repo-root . \
   --part prerelease \
-  --prerelease dev
+  --prerelease-prefix dev
 
 # Actual bump (modifies all pyproject.toml files)
 python3 scripts/ci/bump_version.py \
   --repo-root . \
   --part prerelease \
-  --prerelease dev
+  --prerelease-prefix dev
 ```
 
 **Available parts**:
@@ -77,8 +77,55 @@ python3 scripts/ci/bump_version.py \
 - `minor` - Bump 0.X.0 (0.1.0 → 0.2.0)
 - `patch` - Bump 0.0.X (0.1.0 → 0.1.1)
 - `prerelease` - Bump pre-release version with custom identifier
-  - `--prerelease dev` → `0.1.0-dev0`, `0.1.0-dev1`, etc.
-  - `--prerelease rc` → `0.1.0-rc1`, `0.1.0-rc2`, etc. (default)
+
+**Prerelease bumping**:
+
+Prerelease versions follow the format: `X.Y.Z-{prefix}.{id}` (e.g., `0.1.0-dev.0`, `0.1.0-rc.1`)
+
+```bash
+# Bump to next dev version (0.1.0-dev.0 → 0.1.0-dev.1)
+python3 scripts/ci/bump_version.py \
+  --repo-root . \
+  --part prerelease \
+  --prerelease-prefix dev
+
+# Bump to next rc version (0.1.0-rc.0 → 0.1.0-rc.1)
+python3 scripts/ci/bump_version.py \
+  --repo-root . \
+  --part prerelease \
+  --prerelease-prefix rc
+
+# Change from dev to rc (0.1.0-dev.5 → 0.1.0-rc.0)
+python3 scripts/ci/bump_version.py \
+  --repo-root . \
+  --part prerelease \
+  --prerelease-prefix rc
+```
+
+**Prerelease prefix behavior**:
+- Default prefix: `rc` (used if no prefix specified and no current prerelease exists)
+- **Same prefix**: Increments the ID (`0.1.0-dev.0` → `0.1.0-dev.1`)
+- **Different prefix**: Resets to `.0` (`0.1.0-dev.5` → `0.1.0-rc.0`)
+- **No current prerelease**: Creates new prerelease with `.0` (`0.1.0` → `0.1.0-rc.0`)
+
+**Advanced options**:
+
+```bash
+# Allow downgrading versions (disabled by default)
+# Useful for reverting to earlier prerelease versions
+python3 scripts/ci/bump_version.py \
+  --repo-root . \
+  --part prerelease \
+  --prerelease-prefix dev \
+  --allow-downgrade
+
+# Bump only specific components (defaults to all if not specified)
+python3 scripts/ci/bump_version.py \
+  --repo-root . \
+  --part prerelease \
+  --prerelease-prefix rc \
+  --component packages/shopping-assistant services/shopping-assistant
+```
 
 **After bumping**:
 
@@ -88,8 +135,8 @@ git diff pyproject.toml*
 git diff packages/*/pyproject.toml services/*/pyproject.toml
 
 # Commit with standardized message format
-OLD_VERSION="0.1.0-dev1"
-NEW_VERSION="0.1.0-dev2"
+OLD_VERSION="0.1.0-dev.0"
+NEW_VERSION="0.1.0-dev.1"
 git add pyproject.toml packages/*/pyproject.toml services/*/pyproject.toml
 git commit -m "bump version: ${OLD_VERSION} -> ${NEW_VERSION}"
 ```
@@ -111,16 +158,16 @@ Example: 0.1.0, 1.0.0
 
 ### Release Candidate
 ```
-X.Y.Z-rcN
-Examples: 0.1.0-rc1, 0.1.0-rc2, 0.1.0-rc3
+X.Y.Z-rc.N
+Examples: 0.1.0-rc.0, 0.1.0-rc.1, 0.1.0-rc.2
 ```
 - Pre-release version for testing
-- N starts at 1 and increments per RC
+- N starts at 0 and increments per RC
 
 ### Dev Release
 ```
-X.Y.Z-devN
-Examples: 0.1.0-dev0, 0.1.0-dev1, 0.2.0-dev0
+X.Y.Z-dev.N
+Examples: 0.1.0-dev.0, 0.1.0-dev.1, 0.2.0-dev.0
 ```
 - Development pre-release
 - N starts at 0 and increments per dev release
@@ -139,16 +186,16 @@ Examples: 0.1.0-dev0, 0.1.0-dev1, 0.2.0-dev0
 
 1. **Bump version using the bump script**:
    ```bash
-   # Bump to next dev version (0.1.0-dev0 → 0.1.0-dev1)
+   # Bump to next dev version (0.1.0-dev.0 → 0.1.0-dev.1)
    python3 scripts/ci/bump_version.py \
      --repo-root . \
      --part prerelease \
-     --prerelease dev
+     --prerelease-prefix dev
    ```
 
 2. **Add CHANGELOG entries** (optional for dev):
    ```markdown
-   ## [v0.1.0-dev0] (YYYY-MM-DD)
+   ## [v0.1.0-dev.0] (YYYY-MM-DD)
 
    - ... changes
    ```
@@ -156,19 +203,19 @@ Examples: 0.1.0-dev0, 0.1.0-dev1, 0.2.0-dev0
 3. **Commit with standardized format**:
    ```bash
    git add pyproject.toml packages/*/pyproject.toml services/*/pyproject.toml CHANGELOG.md
-   git commit -m "bump version: 0.1.0-dev0 -> 0.1.0-dev1"
+   git commit -m "bump version: 0.1.0-dev.0 -> 0.1.0-dev.1"
    ```
 
 4. **Trigger release workflow**:
    - Go to **Actions** → **Release** → **Run workflow**
    - Select branch: `develop`
    - Workflow will:
-     - Validate version format (`X.Y.Z-devN`)
-     - Create git tag `v0.1.0-dev1`
+     - Validate version format (`X.Y.Z-dev.N`)
+     - Create git tag `v0.1.0-dev.1`
      - **NOT** create a GitHub release (dev releases are internal snapshots)
 
 **Result**:
-- ✅ Git tag: `v0.1.0-dev1`
+- ✅ Git tag: `v0.1.0-dev.1`
 - ✅ GitHub Actions logs
 - ❌ No GitHub Release page
 
@@ -194,16 +241,16 @@ Examples: 0.1.0-dev0, 0.1.0-dev1, 0.2.0-dev0
 
 3. **Bump version to RC0 using the script**:
    ```bash
-   # Bump to rc0 (0.1.0-dev5 → 0.1.0-rc1)
+   # Bump to rc.0 (0.1.0-dev.5 → 0.1.0-rc.0)
    python3 scripts/ci/bump_version.py \
      --repo-root . \
      --part prerelease \
-     --prerelease rc
+     --prerelease-prefix rc
    ```
 
 4. **Update CHANGELOG**:
    ```markdown
-   ## [v0.1.0-rc1] (YYYY-MM-DD)
+   ## [v0.1.0-rc.0] (YYYY-MM-DD)
 
    ### First Release Candidate
    - ... feature list
@@ -212,7 +259,7 @@ Examples: 0.1.0-dev0, 0.1.0-dev1, 0.2.0-dev0
 5. **Commit and push with standardized format**:
    ```bash
    git add pyproject.toml packages/*/pyproject.toml services/*/pyproject.toml CHANGELOG.md
-   git commit -m "bump version: 0.1.0-dev5 -> 0.1.0-rc1"
+   git commit -m "bump version: 0.1.0-dev.5 -> 0.1.0-rc.0"
    git push origin release/v0.1.0
    ```
 
@@ -235,17 +282,17 @@ Examples: 0.1.0-dev0, 0.1.0-dev1, 0.2.0-dev0
    ```
 
 2. **Version must match branch** (validation enforced):
-   - Branch: `release/v0.1.0` → Version in pyproject.toml: `0.1.0-rc1`, `0.1.0-rc2`, etc.
+   - Branch: `release/v0.1.0` → Version in pyproject.toml: `0.1.0-rc.0`, `0.1.0-rc.1`, etc.
    - ⚠️ Version mismatch will fail validation
 
 3. **Trigger release workflow**:
    - Go to **Actions** → **Release** → **Run workflow**
    - Select branch: `release/v0.1.0`
    - Workflow will:
-     - Validate version format (`X.Y.Z-rcN`)
+     - Validate version format (`X.Y.Z-rc.N`)
      - Validate base version matches branch (`0.1.0`)
-     - Validate CHANGELOG entry for `[v0.1.0-rcN]` exists
-     - Create git tag `v0.1.0-rc1`
+     - Validate CHANGELOG entry for `[v0.1.0-rc.N]` exists
+     - Create git tag `v0.1.0-rc.0`
      - Create GitHub Release (marked as **pre-release**)
 
 **If bugs found**:
@@ -260,32 +307,32 @@ Examples: 0.1.0-dev0, 0.1.0-dev1, 0.2.0-dev0
 
 2. **Bump RC version using the script**:
    ```bash
-   # Bump to next RC (0.1.0-rc1 → 0.1.0-rc2)
+   # Bump to next RC (0.1.0-rc.1 → 0.1.0-rc.2)
    python3 scripts/ci/bump_version.py \
      --repo-root . \
      --part prerelease \
-     --prerelease rc
+     --prerelease-prefix rc
    ```
 
-3. **Update CHANGELOG with new [v0.1.0-rc2] entry**:
+3. **Update CHANGELOG with new [v0.1.0-rc.1] entry**:
    ```markdown
-   ## [v0.1.0-rc2] (YYYY-MM-DD)
+   ## [v0.1.0-rc.1] (YYYY-MM-DD)
 
-   ### Release Candidate 2
-   - Bug fixes from rc1
+   ### Release Candidate 1
+   - Bug fixes from rc.0
    ```
 
 4. **Commit and push with standardized format**:
    ```bash
    git add pyproject.toml packages/*/pyproject.toml services/*/pyproject.toml CHANGELOG.md
-   git commit -m "bump version: 0.1.0-rc1 -> 0.1.0-rc2"
+   git commit -m "bump version: 0.1.0-rc.0 -> 0.1.0-rc.1"
    git push origin release/v0.1.0
    ```
 
-5. **Trigger workflow again** for `v0.1.0-rc2`
+5. **Trigger workflow again** for `v0.1.0-rc.1`
 
 **Result**:
-- ✅ Git tags: `v0.1.0-rc1`, `v0.1.0-rc2`, etc.
+- ✅ Git tags: `v0.1.0-rc.0`, `v0.1.0-rc.1`, etc.
 - ✅ GitHub Releases (pre-release badge)
 - ✅ Release notes extracted from CHANGELOG
 
@@ -298,19 +345,19 @@ Examples: 0.1.0-dev0, 0.1.0-dev1, 0.2.0-dev0
 **Prerequisites**:
 - RC is approved (no more bugs found)
 - Release branch: `release/v0.1.0`
-- Latest RC tag: `v0.1.0-rcN`
+- Latest RC tag: `v0.1.0-rc.N`
 
 **Manual steps**:
 
-1. **Remove RC suffix from version** (0.1.0-rcN → 0.1.0):
+1. **Remove RC suffix from version** (`0.1.0-rc.N` → `0.1.0`):
    ```bash
    git checkout release/v0.1.0
    git pull origin release/v0.1.0
 
    # Option A: Manual edit (simplest for final release)
-   # Edit all pyproject.toml files: 0.1.0-rcN → 0.1.0
+   # Edit all pyproject.toml files: 0.1.0-rc.N → 0.1.0
 
-   # Option B: Use bump script to finalize
+   # Option B: Use bump script with major/minor/patch
    # (This converts the pre-release version to stable)
    # After manual edits or script:
    ```
@@ -327,7 +374,7 @@ Examples: 0.1.0-dev0, 0.1.0-dev1, 0.2.0-dev0
 3. **Commit on release branch with standardized format**:
    ```bash
    git add pyproject.toml packages/*/pyproject.toml services/*/pyproject.toml CHANGELOG.md
-   git commit -m "bump version: 0.1.0-rcN -> 0.1.0"
+   git commit -m "bump version: 0.1.0-rc.N -> 0.1.0"
    git push origin release/v0.1.0
    ```
 
@@ -459,7 +506,7 @@ Uses semver semantics via `semver` library:
 **A**: New version is not greater than latest tag.
 - Check `git tag -l | sort -V | tail -1` (latest tag)
 - Ensure new version in `pyproject.toml` is higher
-- Example: If latest is `v0.1.0-dev5`, next must be `v0.1.0-dev6` or `v0.1.0-rc0` or higher
+- Example: If latest is `v0.1.0-dev.5`, next must be `v0.1.0-dev.6` or `v0.1.0-rc.0` or higher
 
 ### Q: RC branch validation failed
 **A**: Version base doesn't match branch name.
@@ -501,13 +548,13 @@ The workflow enforces these rules (cannot be bypassed):
 
 ### Dev Release (`develop` branch)
 - ✅ Branch must be exactly `develop`
-- ✅ Version format: `X.Y.Z-devN`
+- ✅ Version format: `X.Y.Z-dev.N`
 
 ### RC Release (`release/vX.Y.Z` branch)
 - ✅ Branch must match `release/v*`
-- ✅ Version format: `X.Y.Z-rcN`
+- ✅ Version format: `X.Y.Z-rc.N`
 - ✅ Base version (`X.Y.Z`) must match branch version
-- ✅ CHANGELOG entry required: `[v0.1.0-rcN]`
+- ✅ CHANGELOG entry required: `[v0.1.0-rc.N]`
 
 ### Stable Release (`main` branch)
 - ✅ Branch must be exactly `main`
@@ -529,12 +576,12 @@ graph TD
 
     subgraph release["🟡 Release Branch"]
         R1["release/vX.Y.Z<br/>(created manually)"]
-        R2["Version: X.Y.Z-rc0<br/>(manual edit)"]
+        R2["Version: X.Y.Z-rc.0<br/>(manual edit)"]
         R3["Trigger: workflow_dispatch"]
-        R4["Bug found?<br/>Bump rcN, repeat"]
+        R4["Bug found?<br/>Bump rc.N, repeat"]
         R1 --> R2 --> R3
         R3 -.->|fix bugs| R4
-        R4 -.->|rcN+1| R3
+        R4 -.->|rc.N+1| R3
     end
 
     subgraph main["🟢 Main Branch"]
@@ -569,8 +616,8 @@ graph TD
 
 | Phase | Branch | Version | Trigger | GitHub Release |
 |-------|--------|---------|---------|-----------------|
-| Development | `develop` | `X.Y.Z-devN` | Manual | ❌ No |
-| Stabilization | `release/vX.Y.Z` | `X.Y.Z-rcN` | Manual | ✅ Pre-release |
+| Development | `develop` | `X.Y.Z-dev.N` | Manual | ❌ No |
+| Stabilization | `release/vX.Y.Z` | `X.Y.Z-rc.N` | Manual | ✅ Pre-release |
 | Production | `main` | `X.Y.Z` | Auto (push) | ✅ Stable |
 | Sync | (auto) | (auto) | Auto | (auto) |
 
