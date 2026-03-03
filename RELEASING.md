@@ -112,18 +112,18 @@ Example: 0.1.0, 1.0.0
 ### Release Candidate
 ```
 X.Y.Z-rcN
-Examples: 0.1.0-rc0, 0.1.0-rc1, 0.1.0-rc2
+Examples: 0.1.0-rc1, 0.1.0-rc2, 0.1.0-rc3
 ```
 - Pre-release version for testing
-- N starts at 0 and increments per RC
+- N starts at 1 and increments per RC
 
 ### Dev Release
 ```
 X.Y.Z-devN
-Examples: 0.1.0-dev1, 0.1.0-dev2, 0.2.0-dev0
+Examples: 0.1.0-dev0, 0.1.0-dev1, 0.2.0-dev0
 ```
 - Development pre-release
-- N starts at 1 and increments per dev release
+- N starts at 0 and increments per dev release
 
 ---
 
@@ -139,7 +139,7 @@ Examples: 0.1.0-dev1, 0.1.0-dev2, 0.2.0-dev0
 
 1. **Bump version using the bump script**:
    ```bash
-   # Bump to next dev version (0.1.0-dev1 → 0.1.0-dev2)
+   # Bump to next dev version (0.1.0-dev0 → 0.1.0-dev1)
    python3 scripts/ci/bump_version.py \
      --repo-root . \
      --part prerelease \
@@ -148,7 +148,7 @@ Examples: 0.1.0-dev1, 0.1.0-dev2, 0.2.0-dev0
 
 2. **Add CHANGELOG entries** (optional for dev):
    ```markdown
-   ## [v0.1.0-dev1] (YYYY-MM-DD)
+   ## [v0.1.0-dev0] (YYYY-MM-DD)
 
    - ... changes
    ```
@@ -156,7 +156,7 @@ Examples: 0.1.0-dev1, 0.1.0-dev2, 0.2.0-dev0
 3. **Commit with standardized format**:
    ```bash
    git add pyproject.toml packages/*/pyproject.toml services/*/pyproject.toml CHANGELOG.md
-   git commit -m "bump version: 0.1.0-dev1 -> 0.1.0-dev2"
+   git commit -m "bump version: 0.1.0-dev0 -> 0.1.0-dev1"
    ```
 
 4. **Trigger release workflow**:
@@ -194,7 +194,7 @@ Examples: 0.1.0-dev1, 0.1.0-dev2, 0.2.0-dev0
 
 3. **Bump version to RC0 using the script**:
    ```bash
-   # Bump to rc0 (0.1.0-dev5 → 0.1.0-rc0)
+   # Bump to rc0 (0.1.0-dev5 → 0.1.0-rc1)
    python3 scripts/ci/bump_version.py \
      --repo-root . \
      --part prerelease \
@@ -203,7 +203,7 @@ Examples: 0.1.0-dev1, 0.1.0-dev2, 0.2.0-dev0
 
 4. **Update CHANGELOG**:
    ```markdown
-   ## [v0.1.0-rc0] (YYYY-MM-DD)
+   ## [v0.1.0-rc1] (YYYY-MM-DD)
 
    ### First Release Candidate
    - ... feature list
@@ -212,7 +212,7 @@ Examples: 0.1.0-dev1, 0.1.0-dev2, 0.2.0-dev0
 5. **Commit and push with standardized format**:
    ```bash
    git add pyproject.toml packages/*/pyproject.toml services/*/pyproject.toml CHANGELOG.md
-   git commit -m "bump version: 0.1.0-dev5 -> 0.1.0-rc0"
+   git commit -m "bump version: 0.1.0-dev5 -> 0.1.0-rc1"
    git push origin release/v0.1.0
    ```
 
@@ -235,7 +235,7 @@ Examples: 0.1.0-dev1, 0.1.0-dev2, 0.2.0-dev0
    ```
 
 2. **Version must match branch** (validation enforced):
-   - Branch: `release/v0.1.0` → Version in pyproject.toml: `0.1.0-rc0`, `0.1.0-rc1`, etc.
+   - Branch: `release/v0.1.0` → Version in pyproject.toml: `0.1.0-rc1`, `0.1.0-rc2`, etc.
    - ⚠️ Version mismatch will fail validation
 
 3. **Trigger release workflow**:
@@ -245,7 +245,7 @@ Examples: 0.1.0-dev1, 0.1.0-dev2, 0.2.0-dev0
      - Validate version format (`X.Y.Z-rcN`)
      - Validate base version matches branch (`0.1.0`)
      - Validate CHANGELOG entry for `[v0.1.0-rcN]` exists
-     - Create git tag `v0.1.0-rc0`
+     - Create git tag `v0.1.0-rc1`
      - Create GitHub Release (marked as **pre-release**)
 
 **If bugs found**:
@@ -260,32 +260,32 @@ Examples: 0.1.0-dev1, 0.1.0-dev2, 0.2.0-dev0
 
 2. **Bump RC version using the script**:
    ```bash
-   # Bump to next RC (0.1.0-rc0 → 0.1.0-rc1)
+   # Bump to next RC (0.1.0-rc1 → 0.1.0-rc2)
    python3 scripts/ci/bump_version.py \
      --repo-root . \
      --part prerelease \
      --prerelease rc
    ```
 
-3. **Update CHANGELOG with new [v0.1.0-rc1] entry**:
+3. **Update CHANGELOG with new [v0.1.0-rc2] entry**:
    ```markdown
-   ## [v0.1.0-rc1] (YYYY-MM-DD)
+   ## [v0.1.0-rc2] (YYYY-MM-DD)
 
-   ### Release Candidate 1
-   - Bug fixes from rc0
+   ### Release Candidate 2
+   - Bug fixes from rc1
    ```
 
 4. **Commit and push with standardized format**:
    ```bash
    git add pyproject.toml packages/*/pyproject.toml services/*/pyproject.toml CHANGELOG.md
-   git commit -m "bump version: 0.1.0-rc0 -> 0.1.0-rc1"
+   git commit -m "bump version: 0.1.0-rc1 -> 0.1.0-rc2"
    git push origin release/v0.1.0
    ```
 
-5. **Trigger workflow again** for `v0.1.0-rc1`
+5. **Trigger workflow again** for `v0.1.0-rc2`
 
 **Result**:
-- ✅ Git tags: `v0.1.0-rc0`, `v0.1.0-rc1`, etc.
+- ✅ Git tags: `v0.1.0-rc1`, `v0.1.0-rc2`, etc.
 - ✅ GitHub Releases (pre-release badge)
 - ✅ Release notes extracted from CHANGELOG
 
@@ -308,7 +308,7 @@ Examples: 0.1.0-dev1, 0.1.0-dev2, 0.2.0-dev0
    git pull origin release/v0.1.0
 
    # Option A: Manual edit (simplest for final release)
-   # Edit all pyproject.toml files: 0.1.0-rc2 → 0.1.0
+   # Edit all pyproject.toml files: 0.1.0-rcN → 0.1.0
 
    # Option B: Use bump script to finalize
    # (This converts the pre-release version to stable)
@@ -327,7 +327,7 @@ Examples: 0.1.0-dev1, 0.1.0-dev2, 0.2.0-dev0
 3. **Commit on release branch with standardized format**:
    ```bash
    git add pyproject.toml packages/*/pyproject.toml services/*/pyproject.toml CHANGELOG.md
-   git commit -m "bump version: 0.1.0-rc2 -> 0.1.0"
+   git commit -m "bump version: 0.1.0-rcN -> 0.1.0"
    git push origin release/v0.1.0
    ```
 
@@ -338,12 +338,12 @@ Examples: 0.1.0-dev1, 0.1.0-dev2, 0.2.0-dev0
    # 2. Pull Requests → New Pull Request
    # 3. Base: main, Compare: release/v0.1.0
    # 4. Create PR
-   # 5. Review and merge (normal merge commit, NOT squash/rebase)
+   # 5. Review and merge (squash and merge commit)
    ```
 
 5. **Merge PR to `main`**:
    - Ensure all checks pass
-   - Merge with **Create a merge commit** (default)
+   - Merge with **Squash and merge commit**
 
 6. **CI triggers automatically**:
    - Workflow detects push to `main`
