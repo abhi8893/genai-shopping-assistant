@@ -29,22 +29,56 @@ COMPONENT_FILE_CONFIG = {
 }
 
 ALL_COMPONENTS = list(COMPONENT_FILE_CONFIG.keys())
-SEMVER_PRERELEASE_DEFAULT = "rc"
+SEMVER_PRERELEASE_PREFIX_DEFAULT = "rc"
+
+
+def get_prerelease_prefix(version: semver.Version) -> str:
+    if version.prerelease is None:
+        return ""
+    return version.prerelease.split(".")[0]
 
 
 def bump_part(
-    version: semver.Version, part: str, prerelease: str | None = None
+    version: semver.Version,
+    part: str,
+    prerelease_prefix: str | None = None,
+    allow_downgrade: bool = False,
 ) -> semver.Version:
-    if (
-        (part == "prerelease")
-        and (version.prerelease is None)
-        and (prerelease != SEMVER_PRERELEASE_DEFAULT)
-    ):
-        version_dict = version.to_dict()
-        version_dict["prerelease"] = f"{prerelease}0"
-        next_version = semver.Version(**version_dict)
+    is_prerelease = part == "prerelease"
+
+    if is_prerelease:
+        # does a prerelease tag exist
+        has_prerelease = version.prerelease is not None
+
+        cur_prerelease_prefix = get_prerelease_prefix(version)
+
+        if not prerelease_prefix:
+            if has_prerelease:
+                prerelease_prefix = cur_prerelease_prefix
+            else:
+                prerelease_prefix = SEMVER_PRERELEASE_PREFIX_DEFAULT
+
+        # is provided prerelease prefix same as current one
+        is_same_prerelease = cur_prerelease_prefix == prerelease_prefix
+
+        if has_prerelease and is_same_prerelease:
+            # increment the prerelease number
+            next_version = version.next_version(part="prerelease")
+        elif (has_prerelease and not is_same_prerelease) or (not has_prerelease):
+            # change the prerelease prefix
+            version_dict = version.to_dict()
+            version_dict["prerelease"] = f"{prerelease_prefix}.0"
+            next_version = semver.Version(**version_dict)
     else:
         next_version = version.next_version(part=part)
+
+    if not allow_downgrade and next_version < version:
+        raise ValueError(
+            f"Downgrading version from {version} to {next_version} is not allowed. "
+            "Set allow_downgrade=True to allow downgrading."
+        )
+    if next_version == version:
+        raise ValueError(f"Version {version} did not get bumped.")
 
     return next_version
 
@@ -209,10 +243,15 @@ def main():
         help="Version part to bump",
     )
     parser.add_argument(
-        "--prerelease",
+        "--prerelease-prefix",
         required=False,
-        default=SEMVER_PRERELEASE_DEFAULT,
-        help="Prerelease initialization identifier",
+        default=None,
+        help="Prerelease prefix (e.g., rc, dev)",
+    )
+    parser.add_argument(
+        "--allow-downgrade",
+        action="store_true",
+        help="Allow downgrading version",
     )
 
     args = parser.parse_args()
@@ -234,7 +273,12 @@ def main():
             )
             old_versions_files[fpath] = {
                 "current": old_version,
-                "new": bump_part(old_version, args.part, args.prerelease),
+                "new": bump_part(
+                    old_version,
+                    args.part,
+                    args.prerelease_prefix,
+                    allow_downgrade=args.allow_downgrade,
+                ),
             }
         versions_components[component] = old_versions_files
 
@@ -263,7 +307,10 @@ def main():
                 new_version=version_info["new"],
             )
 
+    print()
+    print("=" * 80)
     print("Version bumped successfully")
+    print("=" * 80)
 
 
 if __name__ == "__main__":
