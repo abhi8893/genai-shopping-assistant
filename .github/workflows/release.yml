@@ -53,9 +53,11 @@ jobs:
           echo "Release type: $RELEASE_TYPE"
           echo "Tag name: $TAG_NAME"
 
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "tag_name=$TAG_NAME" >> "$GITHUB_OUTPUT"
-          echo "release_type=$RELEASE_TYPE" >> "$GITHUB_OUTPUT"
+          {
+            echo "version=$VERSION"
+            echo "tag_name=$TAG_NAME"
+            echo "release_type=$RELEASE_TYPE"
+          } >> "$GITHUB_OUTPUT"
 
   validate:
     name: Validate Release
@@ -155,9 +157,11 @@ jobs:
           VERSION="${{ needs.setup.outputs.version }}"
           NOTES=$(awk "/^\#\# \[v${VERSION}\]/{found=1; next} found && /^\#\# /{exit} found{print}" CHANGELOG.md)
           EOF=$(openssl rand -hex 8)
-          echo "body<<$EOF" >> "$GITHUB_OUTPUT"
-          echo "$NOTES" >> "$GITHUB_OUTPUT"
-          echo "$EOF" >> "$GITHUB_OUTPUT"
+          {
+            echo "body<<$EOF"
+            echo "$NOTES"
+            echo "$EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
         if: needs.setup.outputs.release_type != 'dev'
