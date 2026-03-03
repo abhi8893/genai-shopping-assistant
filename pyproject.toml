@@ -5,13 +5,18 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "project"
-version = "0.1.0"
+version = "0.1.0-dev0"
 
 requires-python = ">=3.12"
+dependencies = [
+    "semver",
+    "tabulate>=0.9.0",
+]
 
 [dependency-groups]
 dev = [
-    "pre-commit"
+    "ipython>=9.10.0",
+    "pre-commit",
 ]
 ci = [
     "pre-commit"

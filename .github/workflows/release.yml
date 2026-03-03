@@ -1,0 +1,232 @@
+name: Release
+
+# Triggers:
+#   - push to main        → stable release (auto, always tags + GitHub release)
+#   - workflow_dispatch   → dev (from develop) or rc (from release/vX.Y.Z)
+#
+# Release types and version formats:
+#   dev    (develop branch):         X.Y.Z-devN    e.g. 0.1.0-dev1
+#   rc     (release/vX.Y.Z branch):  X.Y.Z-rcN     e.g. 0.1.0-rc0
+#   stable (main branch):            X.Y.Z          e.g. 0.1.0
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  setup:
+    name: Setup Release Info
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.release_info.outputs.version }}
+      tag_name: ${{ steps.release_info.outputs.tag_name }}
+      release_type: ${{ steps.release_info.outputs.release_type }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Set up Python
+        run: uv python install "${{ env.PYTHON_VERSION }}"
+
+      - name: Determine release type, validate version format, and compute tag
+        id: release_info
+        run: |
+          BRANCH="${{ github.ref_name }}"
+          REPO_ROOT="${{ github.workspace }}"
+
+          OUTPUT=$(bash scripts/ci/determine_release_info.sh "$BRANCH" "$REPO_ROOT")
+
+          VERSION=$(echo "$OUTPUT" | grep '^VERSION=' | cut -d= -f2-)
+          TAG_NAME=$(echo "$OUTPUT" | grep '^TAG_NAME=' | cut -d= -f2-)
+          RELEASE_TYPE=$(echo "$OUTPUT" | grep '^RELEASE_TYPE=' | cut -d= -f2-)
+
+          echo "Branch: $BRANCH"
+          echo "Version from pyproject.toml: $VERSION"
+          echo "Release type: $RELEASE_TYPE"
+          echo "Tag name: $TAG_NAME"
+
+          {
+            echo "version=$VERSION"
+            echo "tag_name=$TAG_NAME"
+            echo "release_type=$RELEASE_TYPE"
+          } >> "$GITHUB_OUTPUT"
+
+  validate:
+    name: Validate Release
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Set up Python
+        run: uv python install "${{ env.PYTHON_VERSION }}"
+
+      - name: Check tag doesn't already exist
+        run: |
+          TAG="${{ needs.setup.outputs.tag_name }}"
+          if git ls-remote --tags origin "refs/tags/${TAG}" | grep -q "refs/tags/${TAG}$"; then
+            echo "Error: Tag ${TAG} already exists!"
+            exit 1
+          fi
+          echo "✓ Tag ${TAG} does not exist"
+
+      - name: Validate version is greater than latest
+        run: |
+          VERSION="${{ needs.setup.outputs.version }}"
+          LATEST_TAG=$(git tag -l 'v[0-9]*' | sort -V | tail -n 1)
+          if [ -z "$LATEST_TAG" ]; then
+            echo "✓ No existing tags — version $VERSION is valid for initial release"
+          else
+            LATEST_VERSION="${LATEST_TAG#v}"
+            echo "Latest tag: $LATEST_TAG"
+            uv run scripts/ci/compare_versions.py "$VERSION" "$LATEST_VERSION"
+          fi
+
+      - name: Validate CHANGELOG entry (rc and stable)
+        if: needs.setup.outputs.release_type == 'rc' || needs.setup.outputs.release_type == 'stable'
+        run: |
+          VERSION="${{ needs.setup.outputs.version }}"
+          if ! grep -r "^## \[v${VERSION}\]" CHANGELOG.md; then
+            echo "Error: No CHANGELOG.md entry found for v${VERSION}"
+            echo "Expected to find a section like: '## [v${VERSION}] (...)'"
+            exit 1
+          fi
+          echo "✓ CHANGELOG.md entry found for v${VERSION}"
+
+  run_tests:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Set up Python
+        run: uv python install "${{ env.PYTHON_VERSION }}"
+
+      - name: Note - no tests configured
+        run: |
+          echo "No test suite configured yet. Skipping test run."
+          echo "TODO: Add test execution here when test suite is set up"
+
+  tag_and_release:
+    name: Tag and Release
+    runs-on: ubuntu-latest
+    needs: [setup, validate, run_tests]
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+
+      - name: Create and push tag
+        run: |
+          TAG="${{ needs.setup.outputs.tag_name }}"
+          git tag "$TAG"
+          git push origin "$TAG"
+          echo "✓ Tag $TAG created and pushed"
+
+      - name: Extract release notes from CHANGELOG
+        id: release_notes
+        if: needs.setup.outputs.release_type != 'dev'
+        run: |
+          VERSION="${{ needs.setup.outputs.version }}"
+          NOTES=$(awk "/^\#\# \[v${VERSION}\]/{found=1; next} found && /^\#\# /{exit} found{print}" CHANGELOG.md)
+          EOF=$(openssl rand -hex 8)
+          {
+            echo "body<<$EOF"
+            echo "$NOTES"
+            echo "$EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        if: needs.setup.outputs.release_type != 'dev'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.setup.outputs.tag_name }}
+          name: ${{ needs.setup.outputs.tag_name }}
+          body: ${{ steps.release_notes.outputs.body }}
+          prerelease: ${{ needs.setup.outputs.release_type == 'rc' }}
+          draft: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  sync_back:
+    name: Sync main → develop
+    runs-on: ubuntu-latest
+    needs: [setup, tag_and_release]
+    if: needs.setup.outputs.release_type == 'stable'
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create PR main → develop
+        id: create_pr
+        env:
+          GH_TOKEN: ${{ secrets.GENAI_SHOP_ASST_REPO_PR_PAT }}
+        run: |
+          VERSION="${{ needs.setup.outputs.version }}"
+
+          # Check if a PR from main → develop already exists
+          EXISTING_PR=$(gh pr list \
+            --base develop --head main \
+            --json url --jq '.[0].url' 2>/dev/null || true)
+
+          if [ -n "$EXISTING_PR" ]; then
+            echo "PR already exists: $EXISTING_PR"
+            echo "pr_url=$EXISTING_PR" >> "$GITHUB_OUTPUT"
+          else
+            PR_URL=$(gh pr create \
+              --base develop \
+              --head main \
+              --title "chore: sync main → develop after v${VERSION} stable release" \
+              --body "Auto-generated PR to sync main back to develop after stable release v${VERSION}.")
+            echo "✓ Created PR: $PR_URL"
+            echo "pr_url=$PR_URL" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Auto-merge PR
+        env:
+          GH_TOKEN: ${{ secrets.GENAI_SHOP_ASST_REPO_PR_PAT }}
+        run: |
+          gh pr merge "${{ steps.create_pr.outputs.pr_url }}" \
+            --merge --auto
+          echo "✓ Auto-merge enabled on PR"
+
+      - name: Delete release branch
+        env:
+          GH_TOKEN: ${{ secrets.GENAI_SHOP_ASST_REPO_PR_PAT }}
+        run: |
+          VERSION="${{ needs.setup.outputs.version }}"
+          RELEASE_BRANCH="release/v${VERSION}"
+          gh api --method DELETE \
+            "repos/${{ github.repository }}/git/refs/heads/${RELEASE_BRANCH}" \
+            && echo "✓ Deleted branch ${RELEASE_BRANCH}" \
+            || echo "⚠ Branch ${RELEASE_BRANCH} not found or already deleted"
