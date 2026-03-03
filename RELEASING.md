@@ -77,8 +77,8 @@ python3 scripts/ci/bump_version.py \
 - `minor` - Bump 0.X.0 (0.1.0 → 0.2.0)
 - `patch` - Bump 0.0.X (0.1.0 → 0.1.1)
 - `prerelease` - Bump pre-release version with custom identifier
-  - `--prerelease dev` → `0.1.0-dev1`, `0.1.0-dev2`, etc.
-  - `--prerelease rc` → `0.1.0-rc0`, `0.1.0-rc1`, etc. (default)
+  - `--prerelease dev` → `0.1.0-dev0`, `0.1.0-dev1`, etc.
+  - `--prerelease rc` → `0.1.0-rc1`, `0.1.0-rc2`, etc. (default)
 
 **After bumping**:
 
