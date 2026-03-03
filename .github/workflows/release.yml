@@ -34,7 +34,7 @@ jobs:
         uses: astral-sh/setup-uv@v7
 
       - name: Set up Python
-        run: uv python install ${{ env.PYTHON_VERSION }}
+        run: uv python install "${{ env.PYTHON_VERSION }}"
 
       - name: Determine release type, validate version format, and compute tag
         id: release_info
@@ -53,9 +53,9 @@ jobs:
           echo "Release type: $RELEASE_TYPE"
           echo "Tag name: $TAG_NAME"
 
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
-          echo "release_type=$RELEASE_TYPE" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag_name=$TAG_NAME" >> "$GITHUB_OUTPUT"
+          echo "release_type=$RELEASE_TYPE" >> "$GITHUB_OUTPUT"
 
   validate:
     name: Validate Release
@@ -71,7 +71,7 @@ jobs:
         uses: astral-sh/setup-uv@v7
 
       - name: Set up Python
-        run: uv python install ${{ env.PYTHON_VERSION }}
+        run: uv python install "${{ env.PYTHON_VERSION }}"
 
       - name: Check tag doesn't already exist
         run: |
@@ -117,7 +117,7 @@ jobs:
         uses: astral-sh/setup-uv@v7
 
       - name: Set up Python
-        run: uv python install ${{ env.PYTHON_VERSION }}
+        run: uv python install "${{ env.PYTHON_VERSION }}"
 
       - name: Note - no tests configured
         run: |
@@ -155,9 +155,9 @@ jobs:
           VERSION="${{ needs.setup.outputs.version }}"
           NOTES=$(awk "/^\#\# \[v${VERSION}\]/{found=1; next} found && /^\#\# /{exit} found{print}" CHANGELOG.md)
           EOF=$(openssl rand -hex 8)
-          echo "body<<$EOF" >> $GITHUB_OUTPUT
-          echo "$NOTES" >> $GITHUB_OUTPUT
-          echo "$EOF" >> $GITHUB_OUTPUT
+          echo "body<<$EOF" >> "$GITHUB_OUTPUT"
+          echo "$NOTES" >> "$GITHUB_OUTPUT"
+          echo "$EOF" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
         if: needs.setup.outputs.release_type != 'dev'
@@ -197,7 +197,7 @@ jobs:
 
           if [ -n "$EXISTING_PR" ]; then
             echo "PR already exists: $EXISTING_PR"
-            echo "pr_url=$EXISTING_PR" >> $GITHUB_OUTPUT
+            echo "pr_url=$EXISTING_PR" >> "$GITHUB_OUTPUT"
           else
             PR_URL=$(gh pr create \
               --base develop \
@@ -205,7 +205,7 @@ jobs:
               --title "chore: sync main → develop after v${VERSION} stable release" \
               --body "Auto-generated PR to sync main back to develop after stable release v${VERSION}.")
             echo "✓ Created PR: $PR_URL"
-            echo "pr_url=$PR_URL" >> $GITHUB_OUTPUT
+            echo "pr_url=$PR_URL" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Auto-merge PR
