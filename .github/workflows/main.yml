@@ -37,6 +37,36 @@ jobs:
           source .venv/bin/activate
           make SKIP=no-commit-to-branch check-all
 
+  validate_version:
+    name: Validate Version
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: Validate version is greater than highest tag
+        run: |
+          VERSION=$(python3 scripts/ci/get_version.py --repo-root ${{ github.workspace }})
+          echo "Current version: $VERSION"
+
+          LATEST_TAG=$(git tag -l 'v[0-9]*' | sort -V | tail -n 1)
+          if [ -z "$LATEST_TAG" ]; then
+            echo "✓ No existing tags — version $VERSION is valid for initial release"
+          else
+            LATEST_VERSION="${LATEST_TAG#v}"
+            echo "Latest tag: $LATEST_TAG (version: $LATEST_VERSION)"
+
+            uv run scripts/ci/compare_versions.py "$VERSION" "$LATEST_VERSION"
+          fi
+
   # build:
   #   name: Build packages
   #   runs-on: ubuntu-latest
