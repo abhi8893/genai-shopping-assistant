@@ -25,7 +25,7 @@ if [ "$BRANCH" = "main" ]; then
 
 elif echo "$BRANCH" | grep -qE '^release/v[0-9]+\.[0-9]+\.[0-9]+$'; then
   RELEASE_TYPE="rc"
-  if ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+-rc[0-9]+$'; then
+  if ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+-rc\.[0-9]+$'; then
     echo "Error: RC release requires X.Y.Z-rcN version format, got: $VERSION"
     exit 1
   fi
@@ -38,7 +38,7 @@ elif echo "$BRANCH" | grep -qE '^release/v[0-9]+\.[0-9]+\.[0-9]+$'; then
 
 elif [ "$BRANCH" = "develop" ]; then
   RELEASE_TYPE="dev"
-  if ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+-dev[0-9]+$'; then
+  if ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+-dev\.[0-9]+$'; then
     echo "Error: Dev release requires X.Y.Z-devN version format, got: $VERSION"
     exit 1
   fi
