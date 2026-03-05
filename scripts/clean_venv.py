@@ -11,7 +11,7 @@ from pathlib import Path
 
 
 # TODO: lol Claude led to a high cyclomatic complexity, need to refactor
-def clean_venvs(  # noqa: C901, PLR0912
+def clean_venvs(  # noqa: C901, PLR0912, PLR0915
     repo_root: Path, component: str, group: str | None = None, clear_info: bool = False
 ) -> int:
     """Remove .venv-* directories from the specified component.
@@ -34,7 +34,19 @@ def clean_venvs(  # noqa: C901, PLR0912
         )
         return 1
 
+    # Load .info.json to check active venv
+    info_file = component_path / ".info.json"
+    current_active = None
+    if info_file.exists():
+        try:
+            with open(info_file) as f:
+                data = json.load(f)
+            current_active = data.get("venv", {}).get("active")
+        except Exception:
+            pass
+
     # Determine which venvs to clean
+    venv_name = None
     if group:
         if group == "dev":
             venv_name = ".venv-dev"
@@ -44,7 +56,13 @@ def clean_venvs(  # noqa: C901, PLR0912
             venv_name = f".venv-{group}"
 
         print(f"Cleaning {venv_name} in {component}...")
-        venv_path = component_path / venv_name
+
+        # If this group is currently active, it's at .venv, not .venv-{group}
+        if current_active == venv_name:
+            venv_path = component_path / ".venv"
+            print(f"  Note: {venv_name} is currently active (at .venv)")
+        else:
+            venv_path = component_path / venv_name
 
         if venv_path.exists() and venv_path.is_dir():
             print(f"Removing {venv_name}...")
@@ -69,7 +87,6 @@ def clean_venvs(  # noqa: C901, PLR0912
             print(f"✓ Cleaned {len(venv_dirs)} virtual environment(s)")
 
     # Update .info.json to reflect current state
-    info_file = component_path / ".info.json"
     if info_file.exists():
         if clear_info:
             # Clear all venv info
@@ -82,6 +99,10 @@ def clean_venvs(  # noqa: C901, PLR0912
             with open(info_file) as f:
                 data = json.load(f)
             data["venv"]["options"] = sorted(venv_available)
+
+            # If we just deleted the active venv, clear the active field
+            if group and current_active == venv_name:
+                data["venv"]["active"] = None
 
         with open(info_file, "w") as f:
             json.dump(data, f, indent=4)

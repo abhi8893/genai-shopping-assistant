@@ -289,6 +289,30 @@ endif
 	@echo "----------------------------------------"
 	@$(MAKE) -s venv-get-active
 
+.PHONY: venv-unswitch
+venv-unswitch:
+ifndef COMPONENT
+	$(error COMPONENT is required. Usage: make venv-unswitch COMPONENT=packages/shopping-assistant)
+endif
+	@python3 scripts/unswitch_venv.py --repo-root $(REPO_ROOT) --component $(COMPONENT)
+	@echo ""
+	@echo "----------------------------------------"
+	@$(MAKE) -s venv-get-active
+
+.PHONY: venv-unswitch-all
+venv-unswitch-all:
+	@echo "Unswitching virtual environments for all components..."
+	@for component in $$(python3 scripts/list_components.py --repo-root $(REPO_ROOT)); do \
+		echo ""; \
+		echo "==> Unswitching venv for $$component..."; \
+		$(MAKE) venv-unswitch COMPONENT=$$component || exit 1; \
+	done
+	@echo ""
+	@echo "✓ All virtual environments unswitched"
+	@echo ""
+	@echo "----------------------------------------"
+	@$(MAKE) -s venv-get-active
+
 .PHONY: direnv-setup
 direnv-setup:
 	@echo "Setting up .envrc files..."
@@ -313,3 +337,8 @@ show-gone-branches:
 		echo ""; \
 		echo "Run 'make show-gone-branches DELETE=TRUE' to delete these branches"; \
 	fi
+
+
+test:
+	. ./packages/shopping-assistant/.venv/bin/activate
+	

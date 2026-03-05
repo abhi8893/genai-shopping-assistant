@@ -98,6 +98,14 @@ make venv-clean-all GROUP=dev
 - If `GROUP` specified: removes only `.venv-{group}`, updates `.info.json` options
 - If `GROUP` not specified: removes all `.venv*` directories, clears `.info.json` to empty state
 
+**Enhanced: Cleaning active venvs**:
+Since v0.x+, `venv-clean` recognizes when a venv is currently active (renamed to `.venv`) and operates on it:
+```bash
+# This now works even if .venv-dev is currently active (at .venv)
+make venv-clean COMPONENT=root GROUP=dev
+```
+The script checks `.info.json` to find the active venv and cleans it properly, then sets `active: null`.
+
 ### Switching Virtual Environments
 
 **Switch to a different venv**:
@@ -117,6 +125,61 @@ make venv-switch COMPONENT=packages/shopping-assistant TARGET=prod
 5. Updates `options` to include both physical `.venv-*` dirs and active venv
 
 **Important**: Target venv must exist before switching (create with `venv-create` first)
+
+### Unswitching Virtual Environments
+
+**Unswitch a specific component** (reverse a `venv-switch`):
+```bash
+# Reverse the switch - renames .venv back to .venv-{active}
+make venv-unswitch COMPONENT=packages/shopping-assistant
+```
+
+**Unswitch all components at once**:
+```bash
+# Reverse all switches across all components
+make venv-unswitch-all
+```
+
+**How unswitching works**:
+1. Reads `.info.json` to find the currently active venv name
+2. Renames `.venv` back to `.venv-{active}` (original name)
+3. Sets `active: null` in `.info.json`
+4. Updates `options` array to reflect current physical directories
+
+**When to use unswitch**:
+- You used `venv-switch` and want to revert to independent `.venv-{group}` directories
+- Workflow: `venv-switch` → work → `venv-unswitch`
+
+### Activating Venvs in Current Shell
+
+**Activate a venv session-level** (in current terminal only):
+```bash
+# Activate venv for current terminal session
+source scripts/activate-venv.sh packages/shopping-assistant dev
+source scripts/activate-venv.sh services/ecom-backend prod
+source scripts/activate-venv.sh root dev
+```
+
+**How activation works**:
+1. Script finds the component path
+2. Checks if venv is active (`.venv`) or inactive (`.venv-{group}`) via `.info.json`
+3. Sources the activation script directly in current shell using `.` operator
+4. `VIRTUAL_ENV` is set in your current terminal (not a subshell)
+
+**Deactivate**:
+```bash
+# Standard Python venv deactivation
+deactivate
+```
+
+**Key differences from `venv-switch`**:
+
+| Feature | venv-switch | activate-venv.sh |
+|---------|----------|---------|
+| Scope | Filesystem-wide | Current shell only |
+| Persistence | Persists across shells | Only this terminal |
+| Cleanup | Revert with `venv-unswitch` | Just run `deactivate` |
+| Use case | Long-term development | Quick testing/switching |
 
 ### Repairing VIRTUAL_ENV References
 
@@ -303,4 +366,47 @@ make venv-clean-all
 
 # Recreate dev venvs
 make venv-create-all GROUP=dev
+```
+
+**Using venv-unswitch** (reverse a persistent switch):
+```bash
+# Create and switch to dev
+make venv-create COMPONENT=packages/shopping-assistant GROUP=dev
+make venv-switch COMPONENT=packages/shopping-assistant TARGET=dev
+
+# Work in the switched state...
+
+# Reverse the switch when done
+make venv-unswitch COMPONENT=packages/shopping-assistant
+
+# Verify: should show .venv-dev as physical directory, active=null
+cat packages/shopping-assistant/.info.json
+```
+
+**Using activate-venv.sh** (session-level activation):
+```bash
+# Activate for current terminal only
+source scripts/activate-venv.sh packages/shopping-assistant dev
+
+# Verify activation
+echo $VIRTUAL_ENV
+
+# Do work in current shell...
+
+# Deactivate when done
+deactivate
+
+# Note: .venv-dev still exists as separate directory, unchanged
+```
+
+**Cleaning active venvs without unswitching first**:
+```bash
+# Old way (required unswitching first):
+make venv-switch COMPONENT=root TARGET=dev
+make venv-unswitch COMPONENT=root
+make venv-clean COMPONENT=root GROUP=dev
+
+# New way (works directly):
+make venv-switch COMPONENT=root TARGET=dev
+make venv-clean COMPONENT=root GROUP=dev  # ✅ Works! Detects .venv as active .venv-dev
 ```
