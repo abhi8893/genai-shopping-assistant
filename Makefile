@@ -297,3 +297,19 @@ direnv-setup:
 	@echo "✓ .envrc files created and allowed"
 
 
+
+show-gone-branches:
+	@if [ "$(DELETE)" == "TRUE" ]; then \
+		echo "Deleting gone branches..."; \
+		for branch in $$(git for-each-ref --format '%(refname) %(upstream:track)' refs/heads | awk -v delete=TRUE '$$2 == "[gone]" {sub("refs/heads/", "", $$1); print $$1}'); do \
+			echo "Deleting branch $$branch..."; \
+			git branch -D $$branch; \
+		done; \
+		echo ""; \
+		echo "✓ Gone branches deleted"; \
+	else \
+		echo "Listing gone branches...\n"; \
+		git for-each-ref --format '%(refname) %(upstream:track)' refs/heads | awk '$$2 == "[gone]" {sub("refs/heads/", "", $$1); print "- " $$1}'; \
+		echo ""; \
+		echo "Run 'make show-gone-branches DELETE=TRUE' to delete these branches"; \
+	fi
