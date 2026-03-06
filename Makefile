@@ -139,17 +139,54 @@ endif
 
 .PHONY: venv-create-all
 venv-create-all:
-	@echo "Creating virtual environments for all components..."
-	@for component in $$(python3 scripts/list_components.py --repo-root $(REPO_ROOT)); do \
+	@group=$(if $(GROUP),$(GROUP),prod); \
+	echo "Creating virtual environments for all components (GROUP=$$group)..."; \
+	if [ "$(MISSING_ONLY)" = "true" ]; then \
+		echo "Mode: Only creating missing venvs"; \
 		echo ""; \
-		echo "==> Creating venv for $$component (GROUP=$(if $(GROUP),$(GROUP),prod))..."; \
-		$(MAKE) venv-create COMPONENT=$$component GROUP=$(if $(GROUP),$(GROUP),prod) || exit 1; \
-	done
-	@echo ""
-	@echo "✓ All virtual environments created successfully"
-	@echo ""
-	@echo "----------------------------------------"
-	@$(MAKE) -s venv-get-active
+	fi; \
+	created=0; \
+	skipped=0; \
+	for component in $$(python3 scripts/list_components.py --repo-root $(REPO_ROOT)); do \
+		echo ""; \
+		echo "==> Creating venv for $$component (GROUP=$$group)..."; \
+		if [ "$(MISSING_ONLY)" = "true" ]; then \
+			if [ "$$group" = "dev" ]; then \
+				venv_name=".venv-dev"; \
+			elif [ "$$group" = "prod" ]; then \
+				venv_name=".venv-prod"; \
+			else \
+				venv_name=".venv-$$group"; \
+			fi; \
+			if [ "$$component" = "root" ]; then \
+				venv_path="$(REPO_ROOT)/$$venv_name"; \
+			else \
+				venv_path="$(REPO_ROOT)/$$component/$$venv_name"; \
+			fi; \
+			if [ -d "$$venv_path" ]; then \
+				echo "    ⊘ Already exists - skipping"; \
+				skipped=$$((skipped + 1)); \
+				continue; \
+			fi; \
+		fi; \
+		if $(MAKE) venv-create COMPONENT=$$component GROUP=$$group > /dev/null 2>&1; then \
+			created=$$((created + 1)); \
+		else \
+			echo "Error creating venv for $$component"; \
+			exit 1; \
+		fi; \
+	done; \
+	echo ""; \
+	echo "========================================"; \
+	if [ "$(MISSING_ONLY)" = "true" ]; then \
+		echo "Create Summary: $$created created, $$skipped skipped"; \
+	else \
+		echo "✓ All virtual environments created successfully"; \
+	fi; \
+	echo "========================================"; \
+	echo ""; \
+	echo "----------------------------------------"; \
+	$(MAKE) -s venv-get-active
 
 .PHONY: venv-clean-all
 venv-clean-all:
@@ -252,7 +289,11 @@ endif
 		echo "$$failed_components"; \
 		echo ""; \
 		echo "To fix, create the missing venvs:"; \
-		echo "  make venv-create-all GROUP=$(TARGET)"; \
+		echo "  make venv-create-all MISSING_ONLY=true GROUP=$(TARGET)"; \
+		echo ""; \
+		echo "Current state:"; \
+		echo "----------------------------------------"; \
+		$(MAKE) -s venv-get-active; \
 		echo ""; \
 		exit 1; \
 	else \
