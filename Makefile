@@ -151,19 +151,7 @@ venv-create-all:
 		echo ""; \
 		echo "==> Creating venv for $$component (GROUP=$$group)..."; \
 		if [ "$(MISSING_ONLY)" = "true" ]; then \
-			if [ "$$group" = "dev" ]; then \
-				venv_name=".venv-dev"; \
-			elif [ "$$group" = "prod" ]; then \
-				venv_name=".venv-prod"; \
-			else \
-				venv_name=".venv-$$group"; \
-			fi; \
-			if [ "$$component" = "root" ]; then \
-				venv_path="$(REPO_ROOT)/$$venv_name"; \
-			else \
-				venv_path="$(REPO_ROOT)/$$component/$$venv_name"; \
-			fi; \
-			if [ -d "$$venv_path" ]; then \
+			if python3 scripts/check_venv_exists.py --repo-root $(REPO_ROOT) --component $$component --group $$group > /dev/null 2>&1; then \
 				echo "    ⊘ Already exists - skipping"; \
 				skipped=$$((skipped + 1)); \
 				continue; \
