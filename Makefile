@@ -387,40 +387,7 @@ endif
 
 .PHONY: venv-unswitch-all
 venv-unswitch-all:
-	@echo "Unswitching virtual environments for all components..."; \
-	failed_components=""; \
-	succeeded=0; \
-	failed=0; \
-	for component in $$(python3 scripts/list_components.py --repo-root $(REPO_ROOT)); do \
-		echo ""; \
-		echo "==> Unswitching venv for $$component..."; \
-		if $(MAKE) venv-unswitch COMPONENT=$$component > /dev/null 2>&1; then \
-			echo "    ✓ Successfully unswitched"; \
-			succeeded=$$((succeeded + 1)); \
-		else \
-			echo "    ✗ Failed - no active venv to unswitch"; \
-			failed_components="$$failed_components  - $$component"; \
-			failed=$$((failed + 1)); \
-		fi; \
-	done; \
-	echo ""; \
-	echo "========================================"; \
-	echo "Unswitch Summary: $$succeeded unswitched, $$failed had no active venv"; \
-	echo "========================================"; \
-	if [ $$succeeded -eq 0 ] && [ $$failed -gt 0 ]; then \
-		echo ""; \
-		echo "ℹ No active venvs to unswitch in:"; \
-		echo "$$failed_components"; \
-		echo ""; \
-		echo "Components with no active venv are already in independent state."; \
-		exit 0; \
-	elif [ $$failed -gt 0 ]; then \
-		echo ""; \
-		echo "ℹ Components with no active venv (already independent):"; \
-		echo "$$failed_components"; \
-		echo ""; \
-	fi; \
-	echo "✓ Unswitch complete"; \
+	@python3 scripts/unswitch_venv.py --repo-root $(REPO_ROOT) --all; \
 	echo ""; \
 	echo "----------------------------------------"; \
 	$(MAKE) -s venv-get-active
