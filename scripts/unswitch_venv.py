@@ -8,6 +8,8 @@ import os
 import sys
 from pathlib import Path
 
+from repair_venv_references import repair_venv_references  # noqa: E402
+
 
 def unswitch_venv(repo_root: Path, component: str) -> int:
     """Unswitch (deactivate) a virtual environment.
@@ -72,6 +74,7 @@ def unswitch_venv(repo_root: Path, component: str) -> int:
     try:
         default_venv.rename(target_venv_path)
         print(f"  ✓ Renamed .venv → {current_active}")
+        repair_venv_references(target_venv_path)
     except Exception as e:
         print(f"Error renaming .venv: {e}", file=sys.stderr)
         return 1
