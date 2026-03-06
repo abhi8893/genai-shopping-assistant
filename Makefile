@@ -139,31 +139,77 @@ endif
 
 .PHONY: venv-create-all
 venv-create-all:
-	@echo "Creating virtual environments for all components..."
-	@for component in $$(python3 scripts/list_components.py --repo-root $(REPO_ROOT)); do \
+	@group=$(if $(GROUP),$(GROUP),prod); \
+	echo "Creating virtual environments for all components (GROUP=$$group)..."; \
+	if [ "$(MISSING_ONLY)" = "true" ]; then \
+		echo "Mode: Only creating missing venvs"; \
 		echo ""; \
-		echo "==> Creating venv for $$component (GROUP=$(if $(GROUP),$(GROUP),prod))..."; \
-		$(MAKE) venv-create COMPONENT=$$component GROUP=$(if $(GROUP),$(GROUP),prod) || exit 1; \
-	done
-	@echo ""
-	@echo "✓ All virtual environments created successfully"
-	@echo ""
-	@echo "----------------------------------------"
-	@$(MAKE) -s venv-get-active
+	fi; \
+	created=0; \
+	skipped=0; \
+	for component in $$(python3 scripts/list_components.py --repo-root $(REPO_ROOT)); do \
+		echo ""; \
+		echo "==> Creating venv for $$component (GROUP=$$group)..."; \
+		if [ "$(MISSING_ONLY)" = "true" ]; then \
+			if python3 scripts/check_venv_exists.py --repo-root $(REPO_ROOT) --component $$component --group $$group > /dev/null 2>&1; then \
+				echo "    ⊘ Already exists - skipping"; \
+				skipped=$$((skipped + 1)); \
+				continue; \
+			fi; \
+		fi; \
+		if $(MAKE) venv-create COMPONENT=$$component GROUP=$$group > /dev/null 2>&1; then \
+			created=$$((created + 1)); \
+		else \
+			echo "Error creating venv for $$component"; \
+			exit 1; \
+		fi; \
+	done; \
+	echo ""; \
+	echo "========================================"; \
+	if [ "$(MISSING_ONLY)" = "true" ]; then \
+		echo "Create Summary: $$created created, $$skipped skipped"; \
+	else \
+		echo "✓ All virtual environments created successfully"; \
+	fi; \
+	echo "========================================"; \
+	echo ""; \
+	echo "----------------------------------------"; \
+	$(MAKE) -s venv-get-active
 
 .PHONY: venv-clean-all
 venv-clean-all:
-	@echo "Cleaning virtual environments for all components..."
-	@for component in $$(python3 scripts/list_components.py --repo-root $(REPO_ROOT)); do \
+	@echo "Cleaning virtual environments for all components$(if $(GROUP), (GROUP=$(GROUP)),)..."; \
+	failed_components=""; \
+	succeeded=0; \
+	failed=0; \
+	for component in $$(python3 scripts/list_components.py --repo-root $(REPO_ROOT)); do \
 		echo ""; \
 		echo "==> Cleaning venv for $$component$(if $(GROUP), (GROUP=$(GROUP)),)..."; \
-		python3 scripts/clean_venv.py --repo-root $(REPO_ROOT) --component $$component $(if $(GROUP),--group $(GROUP),--clear-info); \
-	done
-	@echo ""
-	@echo "✓ All virtual environments cleaned successfully"
-	@echo ""
-	@echo "----------------------------------------"
-	@$(MAKE) -s venv-get-active
+		if python3 scripts/clean_venv.py --repo-root $(REPO_ROOT) --component $$component $(if $(GROUP),--group $(GROUP),--clear-info) > /dev/null 2>&1; then \
+			echo "    ✓ Successfully cleaned"; \
+			succeeded=$$((succeeded + 1)); \
+		else \
+			echo "    ✗ Failed to clean"; \
+			failed_components="$$failed_components  - $$component"; \
+			failed=$$((failed + 1)); \
+		fi; \
+	done; \
+	echo ""; \
+	echo "========================================"; \
+	echo "Clean Summary: $$succeeded succeeded, $$failed failed"; \
+	echo "========================================"; \
+	if [ $$failed -gt 0 ]; then \
+		echo ""; \
+		echo "Failed components:"; \
+		echo "$$failed_components"; \
+		echo ""; \
+		exit 1; \
+	else \
+		echo "✓ All virtual environments cleaned successfully"; \
+		echo ""; \
+		echo "----------------------------------------"; \
+		$(MAKE) -s venv-get-active; \
+	fi
 
 .PHONY: venv-refresh
 venv-refresh:
@@ -205,17 +251,45 @@ venv-switch-all:
 ifndef TARGET
 	$(error TARGET is required. Usage: make venv-switch-all TARGET=dev)
 endif
-	@echo "Switching virtual environments for all components..."
-	@for component in $$(python3 scripts/list_components.py --repo-root $(REPO_ROOT)); do \
+	@echo "Switching virtual environments for all components to $(TARGET)..."; \
+	failed_components=""; \
+	succeeded=0; \
+	failed=0; \
+	for component in $$(python3 scripts/list_components.py --repo-root $(REPO_ROOT)); do \
 		echo ""; \
 		echo "==> Switching venv for $$component (TARGET=$(TARGET))..."; \
-		$(MAKE) venv-switch COMPONENT=$$component TARGET=$(TARGET) || exit 1; \
-	done
-	@echo ""
-	@echo "✓ All virtual environments switched to $(TARGET) successfully"
-	@echo ""
-	@echo "----------------------------------------"
-	@$(MAKE) -s venv-get-active
+		if $(MAKE) venv-switch COMPONENT=$$component TARGET=$(TARGET) > /dev/null 2>&1; then \
+			echo "    ✓ Successfully switched"; \
+			succeeded=$$((succeeded + 1)); \
+		else \
+			echo "    ✗ Failed - $(TARGET) venv not found"; \
+			failed_components="$$failed_components  - $$component"; \
+			failed=$$((failed + 1)); \
+		fi; \
+	done; \
+	echo ""; \
+	echo "========================================"; \
+	echo "Switch Summary: $$succeeded succeeded, $$failed failed"; \
+	echo "========================================"; \
+	if [ $$failed -gt 0 ]; then \
+		echo ""; \
+		echo "Failed components (missing $(TARGET) venv):"; \
+		echo "$$failed_components"; \
+		echo ""; \
+		echo "To fix, create the missing venvs:"; \
+		echo "  make venv-create-all MISSING_ONLY=true GROUP=$(TARGET)"; \
+		echo ""; \
+		echo "Current state:"; \
+		echo "----------------------------------------"; \
+		$(MAKE) -s venv-get-active; \
+		echo ""; \
+		exit 1; \
+	else \
+		echo "✓ All virtual environments switched to $(TARGET) successfully"; \
+		echo ""; \
+		echo "----------------------------------------"; \
+		$(MAKE) -s venv-get-active; \
+	fi
 
 # ========================================
 # Venv Lockfile Targets
@@ -289,6 +363,23 @@ endif
 	@echo "----------------------------------------"
 	@$(MAKE) -s venv-get-active
 
+.PHONY: venv-unswitch
+venv-unswitch:
+ifndef COMPONENT
+	$(error COMPONENT is required. Usage: make venv-unswitch COMPONENT=packages/shopping-assistant)
+endif
+	@python3 scripts/unswitch_venv.py --repo-root $(REPO_ROOT) --component $(COMPONENT)
+	@echo ""
+	@echo "----------------------------------------"
+	@$(MAKE) -s venv-get-active
+
+.PHONY: venv-unswitch-all
+venv-unswitch-all:
+	@python3 scripts/unswitch_venv.py --repo-root $(REPO_ROOT) --all; \
+	echo ""; \
+	echo "----------------------------------------"; \
+	$(MAKE) -s venv-get-active
+
 .PHONY: direnv-setup
 direnv-setup:
 	@echo "Setting up .envrc files..."
@@ -313,3 +404,8 @@ show-gone-branches:
 		echo ""; \
 		echo "Run 'make show-gone-branches DELETE=TRUE' to delete these branches"; \
 	fi
+
+
+test:
+	. ./packages/shopping-assistant/.venv/bin/activate
+	
