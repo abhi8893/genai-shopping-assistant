@@ -1,9 +1,14 @@
 import argparse
 import re
+import sys
 from pathlib import Path
 
 import semver
 from tabulate import tabulate
+
+sys.path.insert(0, str(Path(__file__).parents[1]))
+
+from list_components import list_components
 
 COMPONENT_FILE_CONFIG = {
     "root": {
@@ -13,6 +18,12 @@ COMPONENT_FILE_CONFIG = {
     },
     "packages/shopping-assistant": {
         "packages/shopping-assistant/pyproject.toml": {
+            "pattern": r'(version = ")(?P<version>.+?)(")',
+        }
+    },
+    # TODO: Remove dummy-pkg before release!
+    "packages/dummy-pkg": {
+        "packages/dummy-pkg/pyproject.toml": {
             "pattern": r'(version = ")(?P<version>.+?)(")',
         }
     },
@@ -256,6 +267,21 @@ def main():
 
     args = parser.parse_args()
     repo_root = Path(args.repo_root)
+
+    all_found_components = list_components(repo_root)
+
+    missing_components = set(all_found_components) - set(ALL_COMPONENTS)
+    extra_components = set(ALL_COMPONENTS) - set(all_found_components)
+
+    if set(all_found_components) != set(ALL_COMPONENTS):
+        if missing_components:
+            raise ValueError(
+                f"Missing version regex config for components: {missing_components}"
+            )
+        if extra_components:
+            raise ValueError(
+                f"Extra components specified not present in repo: {extra_components}"
+            )
 
     if args.component:
         components = args.component
