@@ -54,7 +54,7 @@ jobs:
 
           STATUS=$(gh run list \
             --repo ${{ github.repository }} \
-            --workflow main-workflow \
+            --workflow "Main workflow" \
             --commit $SHA \
             --json conclusion \
             --jq '.[0].conclusion')
