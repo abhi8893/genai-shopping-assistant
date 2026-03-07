@@ -44,7 +44,7 @@ jobs:
             STATUS="running"
           fi
 
-          echo "upstream_workflow_status=$STATUS" >> $GITHUB_ENV
+          echo "upstream_workflow_status=$STATUS" >> "$GITHUB_ENV"
       
       - name: Check if upstream workflow passed (manual trigger)
         if: github.event_name == 'workflow_dispatch'
@@ -67,7 +67,7 @@ jobs:
             STATUS="running"
           fi
 
-          echo "upstream_workflow_status=$STATUS" >> $GITHUB_ENV
+          echo "upstream_workflow_status=$STATUS" >> "$GITHUB_ENV"
 
       - name: Skip release if upstream is not successful
         run: |
