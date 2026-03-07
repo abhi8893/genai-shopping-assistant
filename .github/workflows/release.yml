@@ -26,6 +26,15 @@ on:
           - "TRUE"
           - "FALSE"
 
+      check_upstream_workflow:
+        description: "Check upstream workflow (optional)"
+        required: false
+        default: "TRUE"
+        type: choice
+        options:
+          - "TRUE"
+          - "FALSE"
+
 env:
   PYTHON_VERSION: "3.12"
 
@@ -47,7 +56,7 @@ jobs:
           echo "upstream_workflow_status=$STATUS" >> "$GITHUB_ENV"
       
       - name: Check if upstream workflow passed (manual trigger)
-        if: github.event_name == 'workflow_dispatch'
+        if: (github.event_name == 'workflow_dispatch') && (github.event.inputs.check_upstream_workflow == 'TRUE')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
