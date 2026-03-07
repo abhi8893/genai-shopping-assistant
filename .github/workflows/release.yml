@@ -10,17 +10,93 @@ name: Release
 #   stable (main branch):            X.Y.Z          e.g. 0.1.0
 
 on:
-  push:
+  workflow_run:
+    workflows: ["Main workflow"]
+    types: [completed]
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      test_release:
+        description: "Test release (optional)"
+        required: false
+        default: "FALSE"
+        type: choice
+        options:
+          - "TRUE"
+          - "FALSE"
+
+      check_upstream_workflow:
+        description: "Check upstream workflow (optional)"
+        required: false
+        default: "TRUE"
+        type: choice
+        options:
+          - "TRUE"
+          - "FALSE"
 
 env:
   PYTHON_VERSION: "3.12"
 
 jobs:
+  check_upstream_workflow:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check if upstream workflow passed (main release)
+        if: github.event_name == 'workflow_run'
+        run: |
+          STATUS="${{ github.event.workflow_run.conclusion }}"
+
+          # if empty string, set to running
+          if [ -z "$STATUS" ]; then
+            STATUS="running"
+          fi
+
+          echo "upstream_workflow_status=$STATUS" >> "$GITHUB_ENV"
+      
+      - name: Check if upstream workflow passed (manual trigger)
+        if: (github.event_name == 'workflow_dispatch') && (github.event.inputs.check_upstream_workflow == 'TRUE')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          SHA="${{ github.sha }}"
+
+          echo "Checking upstream workflow for SHA: $SHA"
+
+          STATUS=$(gh run list \
+            --repo ${{ github.repository }} \
+            --workflow "Main workflow" \
+            --commit $SHA \
+            --json conclusion \
+            --jq '.[0].conclusion')
+
+          # if empty string, set to running
+          if [ -z "$STATUS" ]; then
+            STATUS="running"
+          fi
+
+          echo "upstream_workflow_status=$STATUS" >> "$GITHUB_ENV"
+
+      - name: Skip release if upstream is not successful
+        if: ((github.event_name == 'workflow_dispatch') && (github.event.inputs.check_upstream_workflow == 'TRUE')) || (github.event_name == 'workflow_run')
+        run: |
+
+          STATUS="${{ env.upstream_workflow_status }}"
+          echo "Upstream workflow status: $STATUS"
+
+          if [ "$STATUS" = "running" ]; then
+            echo "Upstream workflow is still running, re-trigger after it succeeds"
+            exit 1
+          fi
+          
+          if [ "$STATUS" != "success" ]; then
+            echo "Upstream workflow failed, skipping release"
+            exit 1
+          fi
   setup:
     name: Setup Release Info
+    needs: [check_upstream_workflow]
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.release_info.outputs.version }}
@@ -36,27 +112,43 @@ jobs:
       - name: Set up Python
         run: uv python install "${{ env.PYTHON_VERSION }}"
 
+      - name: Setup virtual environment
+        run: |
+          make venv-create COMPONENT=root GROUP=ci
+          make venv-switch COMPONENT=root TARGET=ci
+
       - name: Determine release type, validate version format, and compute tag
         id: release_info
         run: |
+
+          source .venv/bin/activate
+
           BRANCH="${{ github.ref_name }}"
           REPO_ROOT="${{ github.workspace }}"
+          TEST_RELEASE="${{ github.event.inputs.test_release }}"
 
-          OUTPUT=$(bash scripts/ci/determine_release_info.sh "$BRANCH" "$REPO_ROOT")
+          OUTPUT=$(bash scripts/ci/determine_release_info.sh "$BRANCH" "$REPO_ROOT" "$TEST_RELEASE")
 
           VERSION=$(echo "$OUTPUT" | grep '^VERSION=' | cut -d= -f2-)
           TAG_NAME=$(echo "$OUTPUT" | grep '^TAG_NAME=' | cut -d= -f2-)
           RELEASE_TYPE=$(echo "$OUTPUT" | grep '^RELEASE_TYPE=' | cut -d= -f2-)
+          RELEASE_BRANCH=$(echo "$OUTPUT" | grep '^RELEASE_BRANCH=' | cut -d= -f2-)
+          TEST_RELEASE=$(echo "$OUTPUT" | grep '^TEST_RELEASE=' | cut -d= -f2-)
+          
 
           echo "Branch: $BRANCH"
           echo "Version from pyproject.toml: $VERSION"
           echo "Release type: $RELEASE_TYPE"
           echo "Tag name: $TAG_NAME"
+          echo "Release branch: $RELEASE_BRANCH"
+          echo "Test release: $TEST_RELEASE"
 
           {
             echo "version=$VERSION"
             echo "tag_name=$TAG_NAME"
             echo "release_type=$RELEASE_TYPE"
+            echo "release_branch=$RELEASE_BRANCH"
+            echo "test_release=$TEST_RELEASE"
           } >> "$GITHUB_OUTPUT"
 
   validate:
@@ -110,7 +202,7 @@ jobs:
   run_tests:
     name: Run Tests
     runs-on: ubuntu-latest
-    needs: setup
+    needs: [setup, validate]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -126,10 +218,56 @@ jobs:
           echo "No test suite configured yet. Skipping test run."
           echo "TODO: Add test execution here when test suite is set up"
 
+
+  build_packages:
+    needs: [setup, run_tests]
+    strategy:
+      matrix:
+        # TODO: Remove dummy-pkg before release
+        package: ["shopping-assistant", "dummy-pkg"]
+    
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Set up Python
+        run: uv python install "${{ env.PYTHON_VERSION }}"
+
+      - name: Build package
+        run: |
+          mkdir dist
+          uv build packages/${{ matrix.package }} --out-dir dist
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.package }}-${{ needs.setup.outputs.version }}
+          path: dist/
+
+
+  upload_packages:
+    needs: [setup, build_packages]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist/
+      - name: Upload all packages together
+        uses: actions/upload-artifact@v4
+        with:
+          name: all-packages-${{ needs.setup.outputs.version }}
+          path: dist/
+
   tag_and_release:
     name: Tag and Release
     runs-on: ubuntu-latest
-    needs: [setup, validate, run_tests]
+    needs: [setup, validate, run_tests, upload_packages]
     permissions:
       contents: write
     steps:
@@ -142,6 +280,12 @@ jobs:
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
+
+      - name: Download all packages
+        uses: actions/download-artifact@v4
+        with:
+          name: all-packages-${{ needs.setup.outputs.version }}
+          path: dist/
 
       - name: Create and push tag
         run: |
@@ -171,6 +315,9 @@ jobs:
           name: ${{ needs.setup.outputs.tag_name }}
           body: ${{ steps.release_notes.outputs.body }}
           prerelease: ${{ needs.setup.outputs.release_type == 'rc' }}
+          files: |
+            dist/**/*.whl
+            dist/**/*.tar.gz
           draft: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -52,8 +52,14 @@ jobs:
       - name: Set up Python
         run: uv python install "${{ env.PYTHON_VERSION }}"
 
+      - name: Setup virtual environment
+        run: |
+          make venv-create COMPONENT=root GROUP=ci
+          make venv-switch COMPONENT=root TARGET=ci
+
       - name: Validate version is greater than highest tag
         run: |
+          source .venv/bin/activate
           VERSION=$(python3 scripts/ci/get_version.py --repo-root ${{ github.workspace }})
           echo "Current version: $VERSION"
 
