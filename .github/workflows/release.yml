@@ -156,7 +156,7 @@ jobs:
     needs: [setup, run_tests]
     strategy:
       matrix:
-        package: ["pkg-1", "pkg-2"]
+        package: ["shopping-assistant", "dummy-pkg"]
     
     runs-on: ubuntu-latest
 
