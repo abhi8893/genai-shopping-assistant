@@ -2,6 +2,8 @@ import argparse
 import tomllib
 from pathlib import Path
 
+import semver
+
 
 def list_components(repo_root: Path) -> list[str]:
     """Find all components with pyproject.toml files."""
@@ -36,6 +38,15 @@ def get_version(pyproject_toml: str) -> str:
     return version
 
 
+def get_release_type(version: str) -> str:
+    ver = semver.Version.parse(version)
+    if ver.prerelease:
+        if ver.prerelease.startswith("rc."):
+            return "rc"
+        return "dev"
+    return "stable"
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="List all components in the monorepo with pyproject.toml"
@@ -64,9 +75,11 @@ def main():
         )
 
     version = versions["root"]
+    release_type = get_release_type(version)
 
-    return version
+    print(f"VERSION: {version}")
+    print(f"RELEASE_TYPE: {release_type}")
 
 
 if __name__ == "__main__":
-    print(main())
+    main()
