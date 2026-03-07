@@ -79,7 +79,7 @@ jobs:
           echo "upstream_workflow_status=$STATUS" >> "$GITHUB_ENV"
 
       - name: Skip release if upstream is not successful
-        if: github.event.inputs.check_upstream_workflow == 'TRUE'
+        if: ((github.event_name == 'workflow_dispatch') && (github.event.inputs.check_upstream_workflow == 'TRUE')) || (github.event_name == 'workflow_run')
         run: |
 
           STATUS="${{ env.upstream_workflow_status }}"
