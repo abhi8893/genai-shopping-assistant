@@ -223,6 +223,7 @@ jobs:
     needs: [setup, run_tests]
     strategy:
       matrix:
+        # TODO: Remove dummy-pkg before release
         package: ["shopping-assistant", "dummy-pkg"]
     
     runs-on: ubuntu-latest
