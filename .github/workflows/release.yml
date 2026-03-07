@@ -11,7 +11,7 @@ name: Release
 
 on:
   workflow_run:
-    workflows: ["main"]
+    workflows: ["Main workflow"]
     types: [completed]
     branches:
       - main
