@@ -31,18 +31,42 @@ env:
 
 jobs:
   check_upstream_workflow:
-    name: Check Upstream Workflow
     runs-on: ubuntu-latest
+
     steps:
-      - name: Check if upstream workflow passed
+      - name: Check if upstream workflow passed (main release)
+        if: github.event_name == 'workflow_run'
         run: |
           echo "Upstream workflow status: ${{ github.event.workflow_run.conclusion }}"
           if [ "${{ github.event.workflow_run.conclusion }}" != "success" ]; then
             echo "Upstream workflow failed, skipping release"
             exit 1
           fi
+      
+      - name: Check if upstream workflow passed (manual trigger)
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          SHA="${{ github.sha }}"
+
+          echo "Checking upstream workflow for SHA: $SHA"
+
+          STATUS=$(gh run list \
+            --workflow main-workflow \
+            --commit $SHA \
+            --json conclusion \
+            --jq '.[0].conclusion')
+          
+          echo "Upstream workflow status: $STATUS"
+          
+          if [ "$STATUS" != "success" ]; then
+            echo "Upstream workflow failed, skipping release"
+            exit 1
+          fi
   setup:
     name: Setup Release Info
+    needs: [check_upstream_workflow]
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.release_info.outputs.version }}
