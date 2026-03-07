@@ -247,7 +247,9 @@ jobs:
           name: ${{ needs.setup.outputs.tag_name }}
           body: ${{ steps.release_notes.outputs.body }}
           prerelease: ${{ needs.setup.outputs.release_type == 'rc' }}
-          files: dist/*
+          files: |
+              dist/**/*.whl
+              dist/**/*.tar.gz
           draft: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
