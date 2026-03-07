@@ -36,9 +36,17 @@ jobs:
       - name: Set up Python
         run: uv python install "${{ env.PYTHON_VERSION }}"
 
+      - name: Setup virtual environment
+        run: |
+          make venv-create COMPONENT=root GROUP=ci
+          make venv-switch COMPONENT=root TARGET=ci
+
       - name: Determine release type, validate version format, and compute tag
         id: release_info
         run: |
+
+          source .venv/bin/activate
+          
           BRANCH="${{ github.ref_name }}"
           REPO_ROOT="${{ github.workspace }}"
 
