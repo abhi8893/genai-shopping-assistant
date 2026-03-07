@@ -58,8 +58,18 @@ jobs:
             --commit $SHA \
             --json conclusion \
             --jq '.[0].conclusion')
+
+          # if empty string, set to running
+          if [ -z "$STATUS" ]; then
+            STATUS="running"
+          fi
           
           echo "Upstream workflow status: $STATUS"
+
+          if [ "$STATUS" = "running" ]; then
+            echo "Upstream workflow is still running, re-trigger after it succeeds"
+            exit 1
+          fi
           
           if [ "$STATUS" != "success" ]; then
             echo "Upstream workflow failed, skipping release"
