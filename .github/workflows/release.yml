@@ -37,11 +37,14 @@ jobs:
       - name: Check if upstream workflow passed (main release)
         if: github.event_name == 'workflow_run'
         run: |
-          echo "Upstream workflow status: ${{ github.event.workflow_run.conclusion }}"
-          if [ "${{ github.event.workflow_run.conclusion }}" != "success" ]; then
-            echo "Upstream workflow failed, skipping release"
-            exit 1
+          STATUS="${{ github.event.workflow_run.conclusion }}"
+
+          # if empty string, set to running
+          if [ -z "$STATUS" ]; then
+            STATUS="running"
           fi
+
+          echo "upstream_workflow_status=$STATUS" >> $GITHUB_ENV
       
       - name: Check if upstream workflow passed (manual trigger)
         if: github.event_name == 'workflow_dispatch'
@@ -63,7 +66,13 @@ jobs:
           if [ -z "$STATUS" ]; then
             STATUS="running"
           fi
-          
+
+          echo "upstream_workflow_status=$STATUS" >> $GITHUB_ENV
+
+      - name: Skip release if upstream is not successful
+        run: |
+
+          STATUS="${{ env.upstream_workflow_status }}"
           echo "Upstream workflow status: $STATUS"
 
           if [ "$STATUS" = "running" ]; then
