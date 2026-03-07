@@ -14,6 +14,15 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      test_release:
+        description: "Test release (optional)"
+        required: false
+        default: "FALSE"
+        type: choice
+        options:
+          - "TRUE"
+          - "FALSE"
 
 env:
   PYTHON_VERSION: "3.12"
@@ -46,11 +55,12 @@ jobs:
         run: |
 
           source .venv/bin/activate
-          
+
           BRANCH="${{ github.ref_name }}"
           REPO_ROOT="${{ github.workspace }}"
+          TEST_RELEASE="${{ github.event.inputs.test_release }}"
 
-          OUTPUT=$(bash scripts/ci/determine_release_info.sh "$BRANCH" "$REPO_ROOT")
+          OUTPUT=$(bash scripts/ci/determine_release_info.sh "$BRANCH" "$REPO_ROOT" "$TEST_RELEASE")
 
           VERSION=$(echo "$OUTPUT" | grep '^VERSION=' | cut -d= -f2-)
           TAG_NAME=$(echo "$OUTPUT" | grep '^TAG_NAME=' | cut -d= -f2-)
