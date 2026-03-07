@@ -53,6 +53,7 @@ jobs:
           echo "Checking upstream workflow for SHA: $SHA"
 
           STATUS=$(gh run list \
+            --repo ${{ github.repository }} \
             --workflow main-workflow \
             --commit $SHA \
             --json conclusion \
