@@ -25,3 +25,9 @@ notebook = ["jupyter"]
 [tool.setuptools.packages.find]
 where = ["src/"]
 include = ["dummy_pkg*"]
+
+[tool.pytest.ini_options]
+markers = [
+    "slow: mark tests as slow (deselect with '-m \"not slow\"')",
+    "ci: mark tests to always run in CI (deselect with '-m \"not ci\"')"
+]
