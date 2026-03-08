@@ -104,6 +104,33 @@ jobs:
         run: |
           mkdir dist
           uv build packages/${{ matrix.package }} --out-dir dist
+          echo "WHEEL_FILE=$(ls dist/*.whl)" >> $GITHUB_OUTPUT
+          echo "SDIST_FILE=$(ls dist/*.tar.gz)" >> $GITHUB_OUTPUT
+
+      - name: Setup test environment
+        run: |
+          make venv-create COMPONENT=${{ matrix.package }} GROUP=test
+          make venv-switch COMPONENT=${{ matrix.package }} TARGET=test
+
+      - name: Test package (wheel)
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+
+          # force re-install built wheel file (to avoid running tests against local imports)
+          uv pip install "$WHEEL_FILE" --force-reinstall --python packages/${{ matrix.package }}/.venv
+          cd packages/${{ matrix.package }}
+
+          source .venv/bin/activate
+
+          # check if commit message starts with [include-slow-tests]
+          if [[ "$COMMIT_MESSAGE" == [include-slow-tests]* ]]; then
+            echo "Running all tests including slow ones"
+            pytest
+          else
+            echo "Running tests excluding slow ones"
+            pytest -m "not slow"
+          fi
 
       - name: Upload package artifact
         uses: actions/upload-artifact@v4
