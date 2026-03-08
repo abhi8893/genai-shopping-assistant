@@ -25,7 +25,8 @@ on:
         options:
           - "TRUE"
           - "FALSE"
-
+      
+      # WARNING: This will likely be deprecated / removed as package builds happen in upstream workflow
       check_upstream_workflow:
         description: "Check upstream workflow (optional)"
         required: false
@@ -42,6 +43,9 @@ jobs:
   check_upstream_workflow:
     runs-on: ubuntu-latest
 
+    outputs:
+      upstream_workflow_run_id: ${{ steps.final_check_upstream.outputs.upstream_workflow_run_id }}
+
     steps:
       - name: Check if upstream workflow passed (main release)
         if: github.event_name == 'workflow_run'
@@ -54,6 +58,7 @@ jobs:
           fi
 
           echo "upstream_workflow_status=$STATUS" >> "$GITHUB_ENV"
+          echo "upstream_workflow_run_id=${{ github.event.workflow_run.id }}" >> "$GITHUB_ENV"
       
       - name: Check if upstream workflow passed (manual trigger)
         if: (github.event_name == 'workflow_dispatch') && (github.event.inputs.check_upstream_workflow == 'TRUE')
@@ -64,12 +69,14 @@ jobs:
 
           echo "Checking upstream workflow for SHA: $SHA"
 
-          STATUS=$(gh run list \
+          UPSTREAM_WORKFLOW_RUN=$(gh run list \
             --repo ${{ github.repository }} \
             --workflow "Main workflow" \
-            --commit $SHA \
-            --json conclusion \
-            --jq '.[0].conclusion')
+            --commit "$SHA" \
+            --json conclusion,databaseId \
+            --jq '.[0]')
+          STATUS=$(echo "$UPSTREAM_WORKFLOW_RUN" | jq -r '.conclusion')
+          RUN_ID=$(echo "$UPSTREAM_WORKFLOW_RUN" | jq -r '.databaseId')
 
           # if empty string, set to running
           if [ -z "$STATUS" ]; then
@@ -77,8 +84,10 @@ jobs:
           fi
 
           echo "upstream_workflow_status=$STATUS" >> "$GITHUB_ENV"
+          echo "upstream_workflow_run_id=$RUN_ID" >> "$GITHUB_ENV"
 
       - name: Skip release if upstream is not successful
+        id: final_check_upstream
         if: ((github.event_name == 'workflow_dispatch') && (github.event.inputs.check_upstream_workflow == 'TRUE')) || (github.event_name == 'workflow_run')
         run: |
 
@@ -94,6 +103,8 @@ jobs:
             echo "Upstream workflow failed, skipping release"
             exit 1
           fi
+
+          echo "upstream_workflow_run_id=${{ env.upstream_workflow_run_id }}" >> "$GITHUB_OUTPUT"
   setup:
     name: Setup Release Info
     needs: [check_upstream_workflow]
@@ -219,55 +230,10 @@ jobs:
           echo "TODO: Add test execution here when test suite is set up"
 
 
-  build_packages:
-    needs: [setup, run_tests]
-    strategy:
-      matrix:
-        # TODO: Remove dummy-pkg before release
-        package: ["shopping-assistant", "dummy-pkg"]
-    
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
-
-      - name: Set up Python
-        run: uv python install "${{ env.PYTHON_VERSION }}"
-
-      - name: Build package
-        run: |
-          mkdir dist
-          uv build packages/${{ matrix.package }} --out-dir dist
-
-      - name: Upload package artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.package }}-${{ needs.setup.outputs.version }}
-          path: dist/
-
-
-  upload_packages:
-    needs: [setup, build_packages]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download package artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: dist/
-      - name: Upload all packages together
-        uses: actions/upload-artifact@v4
-        with:
-          name: all-packages-${{ needs.setup.outputs.version }}
-          path: dist/
-
   tag_and_release:
     name: Tag and Release
     runs-on: ubuntu-latest
-    needs: [setup, validate, run_tests, upload_packages]
+    needs: [check_upstream_workflow, setup, validate, run_tests]
     permissions:
       contents: write
     steps:
@@ -280,12 +246,16 @@ jobs:
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
+      
 
+      # TODO: Handle for case when main workflow was skipped?
       - name: Download all packages
         uses: actions/download-artifact@v4
         with:
           name: all-packages-${{ needs.setup.outputs.version }}
           path: dist/
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ needs.check_upstream_workflow.outputs.upstream_workflow_run_id }}
 
       - name: Create and push tag
         run: |

@@ -442,17 +442,62 @@ git push origin --delete release/v0.1.0
 
 ## CI/CD Integration
 
-### Workflow: `.github/workflows/release.yml`
+### Workflow: `.github/workflows/main.yml` (Package Builds)
 
 **Jobs**:
 
 | Job | Trigger | Purpose |
 |-----|---------|---------|
+| `run_checks` | all branches | Code quality checks (linting, formatting, security) |
+| `validate_version` | all branches | Version validation and consistency checks |
+| `build_packages` | all branches (matrix) | Build Python packages (wheels, sdists) for each component |
+| `upload_packages` | all branches | Collect and upload all package artifacts |
+
+**Artifacts Uploaded**:
+- Individual: `{package-name}-{version}` (per package)
+- Aggregated: `all-packages-{version}` (all packages combined)
+
+These artifacts are available for download in downstream workflows.
+
+### Workflow: `.github/workflows/release.yml` (Release & Publishing)
+
+**Jobs**:
+
+| Job | Trigger | Purpose |
+|-----|---------|---------|
+| `check_upstream_workflow` | workflow_run (main) or workflow_dispatch | Verify upstream Main workflow succeeded, fetch run ID |
 | `setup` | all | Determine release type, validate version format |
 | `validate` | all | Check tag uniqueness, version ordering, CHANGELOG |
 | `run_tests` | all | Run test suite (placeholder) |
-| `tag_and_release` | all | Create git tag, GitHub Release (if applicable) |
+| `tag_and_release` | all | Download packages from upstream, create git tag, GitHub Release |
 | `sync_back` | stable only | Auto PR main→develop, auto-merge, delete release branch |
+
+**Package Artifact Download**:
+- Downloads `all-packages-{version}` from upstream workflow run
+- Uses `run-id` from `check_upstream_workflow` job to identify the source workflow run
+- Packages attached to GitHub Release (RC and stable releases only)
+
+### Package Build & Artifact Flow
+
+**When package builds happen**:
+1. **On every push to any branch** (not just releases):
+   - Main workflow (`main.yml`) runs automatically
+   - `build_packages` job builds wheel and source distributions for each package
+   - Each package artifact named: `{package-name}-{version}`
+   - Aggregated artifact named: `all-packages-{version}`
+
+2. **During release workflow** (`release.yml`):
+   - Release workflow waits for Main workflow to complete successfully
+   - Downloads the pre-built `all-packages-{version}` artifact
+   - Uses `run-id` to fetch from the correct upstream workflow run
+   - Attaches packages to GitHub Release (for RC and stable only)
+
+**Build Matrix**:
+Packages are built as a matrix job for each component:
+- `packages/shopping-assistant`
+- Other packages as added to the monorepo
+
+Each build produces both wheel (`.whl`) and source (`.tar.gz`) distributions.
 
 ### Version Extraction
 
@@ -535,6 +580,22 @@ Uses semver semantics via `semver` library:
 
 All must have the **same version** (unified releasing).
 
+### Q: Package artifacts not found in release workflow
+**A**: The Main workflow must complete successfully before Release workflow runs.
+- Check that Main workflow (`main.yml`) passed on the commit
+- If Main workflow failed, Release workflow cannot download artifacts
+- Artifacts are named: `all-packages-{version}` where version matches `pyproject.toml`
+- Re-trigger Release workflow after Main workflow succeeds
+
+### Q: How do I get the built packages?
+**A**: Packages are built and uploaded as GitHub artifacts:
+1. **During development**: Check workflow run artifacts in Actions tab
+   - Individual: `{package-name}-{version}`
+   - Combined: `all-packages-{version}`
+2. **On release**: Packages attached to the GitHub Release page
+   - Go to Releases → latest release
+   - Download `.whl` and `.tar.gz` files
+
 ---
 
 ## Validation Rules
@@ -584,13 +645,22 @@ graph TD
         R4 -.->|rc.N+1| R3
     end
 
+    subgraph main_workflow["🔷 Main Workflow (All Branches)"]
+        MW1["Code Quality Checks"]
+        MW2["Validate Version"]
+        MW3["Build Packages<br/>(matrix job)"]
+        MW4["Upload Artifacts<br/>all-packages-{version}"]
+        MW1 --> MW2 --> MW3 --> MW4
+    end
+
     subgraph main["🟢 Main Branch"]
         M1["main<br/>(production-ready)"]
         M2["Version: X.Y.Z<br/>(manual edit on release branch)"]
         M3["PR merge: release/vX.Y.Z → main"]
         M4["Trigger: push to main (auto)"]
-        M5["Tag & Release"]
-        M1 --> M2 --> M3 --> M4 --> M5
+        M5["Fetch packages from<br/>upstream Main workflow"]
+        M6["Tag & Release"]
+        M1 --> M2 --> M3 --> M4 --> M5 --> M6
     end
 
     subgraph sync["🔄 Sync Back"]
@@ -600,14 +670,17 @@ graph TD
         S1 --> S2 --> S3
     end
 
-    D3 -->|cut release/vX.Y.Z| R1
-    R3 -->|RC approved<br/>bump to X.Y.Z| M2
-    M5 --> S1
+    D3 -->|push commit + Main workflow| MW1
+    R3 -->|push commit + Main workflow| MW1
+    M4 -->|Main workflow completed| MW1
+    MW4 -->|Artifacts ready| M5
+    M6 --> S1
 
     style D1 fill:#e3f2fd
     style R1 fill:#fff3e0
     style M1 fill:#e8f5e9
     style S1 fill:#f3e5f5
+    style MW1 fill:#f0f4f8
 ```
 
 ---
