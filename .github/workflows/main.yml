@@ -79,7 +79,7 @@ jobs:
             uv run scripts/ci/compare_versions.py "$VERSION" "$LATEST_VERSION"
           fi
 
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
   build_packages:
     needs: [run_checks, validate_version]

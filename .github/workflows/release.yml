@@ -71,11 +71,11 @@ jobs:
           UPSTREAM_WORKFLOW_RUN=$(gh run list \
             --repo ${{ github.repository }} \
             --workflow "Main workflow" \
-            --commit $SHA \
+            --commit "$SHA" \
             --json conclusion,databaseId \
             --jq '.[0]')
-          STATUS=$(echo $UPSTREAM_WORKFLOW_RUN | jq -r '.conclusion')
-          RUN_ID=$(echo $UPSTREAM_WORKFLOW_RUN | jq -r '.databaseId')
+          STATUS=$(echo "$UPSTREAM_WORKFLOW_RUN" | jq -r '.conclusion')
+          RUN_ID=$(echo "$UPSTREAM_WORKFLOW_RUN" | jq -r '.databaseId')
 
           # if empty string, set to running
           if [ -z "$STATUS" ]; then
