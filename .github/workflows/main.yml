@@ -84,6 +84,7 @@ jobs:
   build_packages:
     needs: [run_checks, validate_version]
     strategy:
+      fail-fast: false
       matrix:
         # TODO: Remove dummy-pkg before release
         package: ["shopping-assistant", "dummy-pkg"]
