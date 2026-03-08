@@ -162,7 +162,7 @@ jobs:
           name: all-packages-${{ needs.validate_version.outputs.version }}
           path: dist/
 
-  all_tests_pass_gate:
+  all_checks_pass_gate:
     needs: [upload_packages]
     runs-on: ubuntu-latest
     env:
