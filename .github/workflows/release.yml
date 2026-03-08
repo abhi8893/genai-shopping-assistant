@@ -25,7 +25,8 @@ on:
         options:
           - "TRUE"
           - "FALSE"
-
+      
+      # WARNING: This will likely be deprecated / removed as package builds happen in upstream workflow
       check_upstream_workflow:
         description: "Check upstream workflow (optional)"
         required: false
