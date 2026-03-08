@@ -72,10 +72,10 @@ jobs:
             --repo ${{ github.repository }} \
             --workflow "Main workflow" \
             --commit "$SHA" \
-            --json conclusion,workflowDatabaseId \
+            --json conclusion,databaseId \
             --jq '.[0]')
           STATUS=$(echo "$UPSTREAM_WORKFLOW_RUN" | jq -r '.conclusion')
-          RUN_ID=$(echo "$UPSTREAM_WORKFLOW_RUN" | jq -r '.workflowDatabaseId')
+          RUN_ID=$(echo "$UPSTREAM_WORKFLOW_RUN" | jq -r '.databaseId')
 
           # if empty string, set to running
           if [ -z "$STATUS" ]; then
