@@ -104,8 +104,16 @@ jobs:
         run: |
           mkdir dist
           uv build "packages/${{ matrix.package }}" --out-dir dist
-          echo "WHEEL_FILE=$(ls dist/*.whl)" >> "$GITHUB_OUTPUT"
-          echo "SDIST_FILE=$(ls dist/*.tar.gz)" >> "$GITHUB_OUTPUT"
+
+
+          WHEEL_FILE=$(ls dist/*.whl)
+          SDIST_FILE=$(ls dist/*.tar.gz)
+
+          echo "Found wheel file: $WHEEL_FILE"
+          echo "Found sdist file: $SDIST_FILE"
+
+          echo "WHEEL_FILE=$WHEEL_FILE" >> "$GITHUB_ENV"
+          echo "SDIST_FILE=$SDIST_FILE" >> "$GITHUB_ENV"
 
       - name: Setup test environment
         run: |
