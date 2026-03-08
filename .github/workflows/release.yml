@@ -253,6 +253,7 @@ jobs:
         with:
           name: all-packages-${{ needs.setup.outputs.version }}
           path: dist/
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           run-id: ${{ needs.check_upstream_workflow.outputs.upstream_workflow_run_id }}
 
       - name: Create and push tag
