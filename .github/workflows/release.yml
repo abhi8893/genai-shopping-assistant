@@ -27,6 +27,9 @@ on:
           - "FALSE"
       
       # WARNING: This will likely be deprecated / removed as package builds happen in upstream workflow
+      #          Use this to do rc releases when slow tests skipped in main workflow, and 
+      #          either you plan to run them for this rc release OR
+      #          if you want to again skip (then pass skip_slow_tests: TRUE)
       check_upstream_workflow:
         description: "Check upstream workflow (optional)"
         required: false

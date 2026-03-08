@@ -161,3 +161,21 @@ jobs:
         with:
           name: all-packages-${{ needs.validate_version.outputs.version }}
           path: dist/
+
+  all_tests_pass_gate:
+    needs: [upload_packages]
+    runs-on: ubuntu-latest
+    env:
+      COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+    steps:
+      - name: Check if all tests were run (and passed)
+        run: |
+          # TODO: Make this generic enough to not rely on commit message at two places to
+          #       identify if all or partial tests were run
+          if [[ "$COMMIT_MESSAGE" == "[include-slow-tests]"* ]]; then
+            echo "All tests were run (including slow ones)"
+            exit 0
+          else
+            echo "All tests were not run: slow tests were excluded. Failing the workflow."
+            exit 1
+          fi
