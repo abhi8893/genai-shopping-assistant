@@ -36,8 +36,8 @@ on:
           - "TRUE"
           - "FALSE"
 
-      release_partial_testing:
-        description: "Allow releasing with partial testing (optional)"
+      skip_slow_tests:
+        description: "Skip slow tests (optional)"
         required: false
         default: "FALSE"
         type: choice
@@ -251,8 +251,6 @@ jobs:
           run-id: ${{ needs.check_upstream_workflow.outputs.upstream_workflow_run_id }}
 
       - name: Force re-install package (wheel)
-        env:
-          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
 
           WHEEL_FILE=$(ls dist/*.whl)
@@ -264,16 +262,16 @@ jobs:
           cd packages/${{ matrix.package }}
           source .venv/bin/activate
 
-          # check if commit message starts with [skip-slow-tests]
-          if [[ "$COMMIT_MESSAGE" == "[skip-slow-tests]"* ]]; then
-            echo "WARNING: Skipping slow tests"
+          # check if skip_slow_tests is TRUE
+          if [[ "${{ github.event.inputs.skip_slow_tests }}" == "TRUE" ]]; then
+            echo "WARNING: Running partial tests"
             pytest -m "not slow"
           else
             echo "Running all tests"
             pytest
           fi
 
-      - if: github.event_name != 'workflow_run'
+      - if: github.event_name != 'workflow_dispatch'
         name: Run tests (automated release)
         run: |
           cd packages/${{ matrix.package }}
@@ -282,23 +280,6 @@ jobs:
           echo "Running all tests"
           pytest
     
-  partial_test_gate_check:
-    name: Partial Test Gate Check
-    runs-on: ubuntu-latest
-    needs: [setup, validate]
-    steps:
-      - if: github.event_name == 'workflow_dispatch'
-        name: Validate partial tests for release (manual trigger)
-        run: |
-
-          if [ "${{ github.event.inputs.release_partial_testing }}" == "TRUE" ]; then
-            echo "Partial tests validation passed"
-            echo "Proceeding with release"
-            exit 0
-          else
-            echo "Partial tests validation failed - skipping release"
-            exit 1
-          fi
 
       - if: github.event_name != 'workflow_dispatch'
         name: All tests ALWAYS run (automated release)
@@ -308,7 +289,7 @@ jobs:
   tag_and_release:
     name: Tag and Release
     runs-on: ubuntu-latest
-    needs: [check_upstream_workflow, setup, validate, partial_test_gate_check]
+    needs: [check_upstream_workflow, setup, validate, test_packages]
     permissions:
       contents: write
     steps:
