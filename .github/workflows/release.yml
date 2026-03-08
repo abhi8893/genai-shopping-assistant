@@ -255,7 +255,7 @@ jobs:
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
 
-          WHEEL_FILE=$(ls dist/*.whl | head -n 1)
+          WHEEL_FILE=$(ls dist/*.whl)
           uv pip install "$WHEEL_FILE" --force-reinstall --python "packages/${{ matrix.package }}/.venv"
 
       - if: github.event_name == 'workflow_dispatch'
