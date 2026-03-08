@@ -64,7 +64,7 @@ jobs:
         id: version_check
         run: |
           source .venv/bin/activate
-          VERSION_OUTPUT=$(python3 scripts/ci/get_version.py --repo-root ${{ github.workspace }})
+          VERSION_OUTPUT=$(python3 scripts/ci/get_version.py --repo-root "${{ github.workspace }}")
           VERSION=$(echo "$VERSION_OUTPUT" | grep "^VERSION:" | cut -d' ' -f2)
 
           echo "Current version: $VERSION"
@@ -104,8 +104,8 @@ jobs:
         run: |
           mkdir dist
           uv build "packages/${{ matrix.package }}" --out-dir dist
-          echo "WHEEL_FILE=$(ls dist/*.whl)" >> $GITHUB_OUTPUT
-          echo "SDIST_FILE=$(ls dist/*.tar.gz)" >> $GITHUB_OUTPUT
+          echo "WHEEL_FILE=$(ls dist/*.whl)" >> "$GITHUB_OUTPUT"
+          echo "SDIST_FILE=$(ls dist/*.tar.gz)" >> "$GITHUB_OUTPUT"
 
       - name: Setup test environment
         run: |
