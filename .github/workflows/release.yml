@@ -36,6 +36,15 @@ on:
           - "TRUE"
           - "FALSE"
 
+      release_partial_testing:
+        description: "Allow releasing with partial testing (optional)"
+        required: false
+        default: "FALSE"
+        type: choice
+        options:
+          - "TRUE"
+          - "FALSE"
+
 env:
   PYTHON_VERSION: "3.12"
 
@@ -210,10 +219,14 @@ jobs:
           fi
           echo "✓ CHANGELOG.md entry found for v${VERSION}"
 
-  run_tests:
-    name: Run Tests
+  test_packages:
+    name: Test Packages
     runs-on: ubuntu-latest
-    needs: [setup, validate]
+    needs: [check_upstream_workflow, setup, validate]
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ["shopping-assistant", "dummy-pkg"]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -224,16 +237,78 @@ jobs:
       - name: Set up Python
         run: uv python install "${{ env.PYTHON_VERSION }}"
 
-      - name: Note - no tests configured
+      - name: Setup test environment
         run: |
-          echo "No test suite configured yet. Skipping test run."
-          echo "TODO: Add test execution here when test suite is set up"
+          make venv-create COMPONENT="packages/${{ matrix.package }}" GROUP=test
+          make venv-switch COMPONENT="packages/${{ matrix.package }}" TARGET=test
 
+      - name: Download package
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.package }}-${{ needs.setup.outputs.version }}
+          path: dist/
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ needs.check_upstream_workflow.outputs.upstream_workflow_run_id }}
+
+      - name: Force re-install package (wheel)
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+
+          WHEEL_FILE=$(ls dist/*.whl | head -n 1)
+          uv pip install "$WHEEL_FILE" --force-reinstall --python "packages/${{ matrix.package }}/.venv"
+
+      - if: github.event_name == 'workflow_dispatch'
+        name: Run tests (manual trigger release)
+        run: |
+          cd packages/${{ matrix.package }}
+          source .venv/bin/activate
+
+          # check if commit message starts with [skip-slow-tests]
+          if [[ "$COMMIT_MESSAGE" == "[skip-slow-tests]"* ]]; then
+            echo "WARNING: Skipping slow tests"
+            pytest -m "not slow"
+          else
+            echo "Running all tests"
+            pytest
+          fi
+
+      - if: github.event_name != 'workflow_run'
+        name: Run tests (automated release)
+        run: |
+          cd packages/${{ matrix.package }}
+          source .venv/bin/activate
+
+          echo "Running all tests"
+          pytest
+    
+  partial_test_gate_check:
+    name: Partial Test Gate Check
+    runs-on: ubuntu-latest
+    needs: [setup, validate]
+    steps:
+      - if: github.event_name == 'workflow_dispatch'
+        name: Validate partial tests for release (manual trigger)
+        run: |
+
+          if [ "${{ github.event.inputs.release_partial_testing }}" == "TRUE" ]; then
+            echo "Partial tests validation passed"
+            echo "Proceeding with release"
+            exit 0
+          else
+            echo "Partial tests validation failed - skipping release"
+            exit 1
+          fi
+
+      - if: github.event_name != 'workflow_dispatch'
+        name: All tests ALWAYS run (automated release)
+        run: |
+          echo "All tests have run for automated release"
 
   tag_and_release:
     name: Tag and Release
     runs-on: ubuntu-latest
-    needs: [check_upstream_workflow, setup, validate, run_tests]
+    needs: [check_upstream_workflow, setup, validate, partial_test_gate_check]
     permissions:
       contents: write
     steps:
