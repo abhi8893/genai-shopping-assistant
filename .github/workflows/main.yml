@@ -109,8 +109,8 @@ jobs:
 
       - name: Setup test environment
         run: |
-          make venv-create COMPONENT="${{ matrix.package }}" GROUP=test
-          make venv-switch COMPONENT="${{ matrix.package }}" TARGET=test
+          make venv-create COMPONENT="packages/${{ matrix.package }}" GROUP=test
+          make venv-switch COMPONENT="packages/${{ matrix.package }}" TARGET=test
 
       - name: Test package (wheel)
         env:
