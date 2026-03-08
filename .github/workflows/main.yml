@@ -40,6 +40,9 @@ jobs:
   validate_version:
     name: Validate Version
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version_check.outputs.version }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -58,9 +61,12 @@ jobs:
           make venv-switch COMPONENT=root TARGET=ci
 
       - name: Validate version is greater than highest tag
+        id: version_check
         run: |
           source .venv/bin/activate
-          VERSION=$(python3 scripts/ci/get_version.py --repo-root ${{ github.workspace }})
+          VERSION_OUTPUT=$(python3 scripts/ci/get_version.py --repo-root ${{ github.workspace }})
+          VERSION=$(echo "$VERSION_OUTPUT" | grep "^VERSION:" | cut -d' ' -f2)
+
           echo "Current version: $VERSION"
 
           LATEST_TAG=$(git tag -l 'v[0-9]*' | sort -V | tail -n 1)
@@ -73,17 +79,49 @@ jobs:
             uv run scripts/ci/compare_versions.py "$VERSION" "$LATEST_VERSION"
           fi
 
-  # build:
-  #   name: Build packages
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v4
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+  build_packages:
+    needs: [run_checks, validate_version]
+    strategy:
+      matrix:
+        # TODO: Remove dummy-pkg before release
+        package: ["shopping-assistant", "dummy-pkg"]
     
-  #     - name: Build packages/shopping-assistant
-  #       run: |
-  #         make venv-create COMPONENT=shopping-assistant
-  #         make venv-switch COMPONENT=shopping-assistant TARGET=prod
-  #         source .venv/bin/activate
-  #         cd packages/shopping-assistant
-  #         uv build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Set up Python
+        run: uv python install "${{ env.PYTHON_VERSION }}"
+
+      - name: Build package
+        run: |
+          mkdir dist
+          uv build packages/${{ matrix.package }} --out-dir dist
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.package }}-${{ needs.validate_version.outputs.version }}
+          path: dist/
+
+
+  upload_packages:
+    needs: [validate_version, build_packages]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist/
+      - name: Upload all packages together
+        uses: actions/upload-artifact@v4
+        with:
+          name: all-packages-${{ needs.validate_version.outputs.version }}
+          path: dist/
