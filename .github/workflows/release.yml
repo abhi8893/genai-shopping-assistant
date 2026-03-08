@@ -279,13 +279,7 @@ jobs:
 
           echo "Running all tests"
           pytest
-    
-
-      - if: github.event_name != 'workflow_dispatch'
-        name: All tests ALWAYS run (automated release)
-        run: |
-          echo "All tests have run for automated release"
-
+  
   tag_and_release:
     name: Tag and Release
     runs-on: ubuntu-latest
