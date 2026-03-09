@@ -173,11 +173,11 @@ jobs:
 
           pkg="${{ matrix.package }}"
           pkg_var="${pkg//-/_}" 
-          status_var="TEST_STATUS_${pkg_var}" 
+          status_var="TEST_STATUS" 
 
           # check if commit message starts with [include-slow-tests]
           # Always run all tests if the branch is in [develop, main, fix/develop-ci-tests-bug]
-          if [[ "$COMMIT_MESSAGE" == "[include-slow-tests]"* ]] && [[ "${{ github.ref_name }}" != "develop" ]] && [[ "${{ github.ref_name }}" != "main" ]]; then
+          if [[ "$COMMIT_MESSAGE" == "[include-slow-tests]"* ]] && [[ "${{ github.ref_name }}" != "develop" ]] && [[ "${{ github.ref_name }}" != "main" ]] && [[ "${{ github.ref_name }}" != "fix/develop-ci-tests-bug" ]]; then
             echo "Running all tests including slow ones"
             pytest
             echo "${status_var}=ALL" >> "$GITHUB_ENV"
