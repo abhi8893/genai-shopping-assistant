@@ -213,36 +213,14 @@ jobs:
           name: all-packages-${{ needs.validate_version.outputs.version }}
           path: dist/
 
-  # all_checks_pass_gate:
-  #   needs: [upload_packages]
-  #   runs-on: ubuntu-latest
-  #   env:
-  #     COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
-  #   steps:
-  #     - name: Check if all tests were run (and passed)
-  #       run: |
-
-  #         PACKAGES=("shopping-assistant" "dummy-pkg")
-
-  #         for pkg in "${PACKAGES[@]}"; do
-  #             pkg_var="${pkg//-/_}"                     # shopping-assistant -> shopping_assistant
-  #             status_var="TEST_STATUS_${pkg_var}"       # TEST_STATUS_shopping_assistant
-
-  #             echo "$status_var: ${!status_var}"
-
-  #             fail_count=0
-
-  #             if [[ "${!status_var}" == "ALL" ]]; then
-  #                 echo "All tests were run for $pkg"
-  #             else
-  #                 echo "Not all tests were run for $pkg"
-  #                 ((fail_count++))
-  #             fi
-  #         done
-
-  #         if [ "$fail_count" -gt 0 ]; then
-  #             echo "Some packages failed to run all tests"
-  #             exit 1
-  #         fi
-
-  #         echo "Fail count: $fail_count"
+  
+  final_status:
+    runs-on: ubuntu-latest
+    needs: [test_packages]
+    if: always()
+    steps:
+      - name: Check for any failures
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: |
+          echo "One or more jobs failed or were cancelled."
+          exit 1
