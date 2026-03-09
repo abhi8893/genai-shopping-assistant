@@ -136,7 +136,12 @@ jobs:
           # Always run all tests if the branch is in [develop, main, fix/develop-ci-tests-bug]
           if [[ "$COMMIT_MESSAGE" == "[include-slow-tests]"* ]] && [[ "${{ github.ref_name }}" != "develop" ]] && [[ "${{ github.ref_name }}" != "main" ]]; then
             echo "Running all tests including slow ones"
-            echo "TEST_STATUS_${{ matrix.package }}=ALL" >> "$GITHUB_OUTPUT"
+
+            pkg="${{ matrix.package }}"
+            pkg_var="${pkg//-/_}" 
+            status_var="TEST_STATUS_${pkg_var}" 
+            
+            echo "${status_var}=ALL" >> "$GITHUB_OUTPUT"
             pytest
           else
             echo "Running tests excluding slow ones"
@@ -178,7 +183,7 @@ jobs:
 
           for pkg in "${PACKAGES[@]}"; do
               pkg_var="${pkg//-/_}"                     # shopping-assistant -> shopping_assistant
-              status_var="TEST_STATUS_${pkg_var}"     # TEST_STATUS_shopping_assistant
+              status_var="TEST_STATUS_${pkg_var}"       # TEST_STATUS_shopping_assistant
 
               echo "$status_var: ${!status_var}"
 
