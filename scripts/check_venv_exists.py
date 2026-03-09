@@ -62,6 +62,8 @@ def main():
     repo_root = Path(args.repo_root)
     exists = venv_exists(repo_root, args.component, args.group)
 
+    print(exists)
+
     # Exit with 0 if exists, 1 if not (standard Unix convention)
     sys.exit(0 if exists else 1)
 

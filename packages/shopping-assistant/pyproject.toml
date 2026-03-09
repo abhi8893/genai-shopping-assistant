@@ -38,3 +38,10 @@ include = ["shopping_assistant*"]
 
 [tool.setuptools.package-data]
 shopping_assistant = ["config/*.yml", ".env.example"]
+
+
+[tool.pytest.ini_options]
+markers = [
+    "slow: mark tests as slow (deselect with '-m \"not slow\"')",
+    "ci: mark tests to always run in CI (deselect with '-m \"not ci\"')"
+]

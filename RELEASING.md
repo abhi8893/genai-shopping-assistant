@@ -288,10 +288,18 @@ Examples: 0.1.0-dev.0, 0.1.0-dev.1, 0.2.0-dev.0
 3. **Trigger release workflow**:
    - Go to **Actions** → **Release** → **Run workflow**
    - Select branch: `release/v0.1.0`
+   - **Workflow inputs**:
+     - `check_upstream_workflow`: Check if main workflow passed (default: `TRUE`)
+       - Set to `FALSE` if you want to skip this check (e.g., for RC releases while slow tests are being skipped)
+     - `skip_slow_tests`: Skip slow tests during release testing (default: `FALSE`)
+       - Set to `TRUE` to run only quick tests
+       - Set to `FALSE` to run all tests including slow ones
    - Workflow will:
      - Validate version format (`X.Y.Z-rc.N`)
      - Validate base version matches branch (`0.1.0`)
      - Validate CHANGELOG entry for `[v0.1.0-rc.N]` exists
+     - Download built packages from upstream Main workflow
+     - Run tests on built packages (respecting `skip_slow_tests` parameter)
      - Create git tag `v0.1.0-rc.0`
      - Create GitHub Release (marked as **pre-release**)
 
@@ -442,7 +450,7 @@ git push origin --delete release/v0.1.0
 
 ## CI/CD Integration
 
-### Workflow: `.github/workflows/main.yml` (Package Builds)
+### Workflow: `.github/workflows/main.yml` (Package Builds & Testing)
 
 **Jobs**:
 
@@ -450,8 +458,22 @@ git push origin --delete release/v0.1.0
 |-----|---------|---------|
 | `run_checks` | all branches | Code quality checks (linting, formatting, security) |
 | `validate_version` | all branches | Version validation and consistency checks |
-| `build_packages` | all branches (matrix) | Build Python packages (wheels, sdists) for each component |
+| `build_packages` | all branches (matrix) | Build and test packages (wheels, sdists) for each component |
 | `upload_packages` | all branches | Collect and upload all package artifacts |
+| `all_checks_pass_gate` | all branches | Gate: Ensures all tests were run (blocks PRs if slow tests skipped) |
+
+**Testing in `build_packages` Job**:
+- After building a wheel, packages are tested against the built wheel (not editable install)
+- **By default**: Runs `pytest -m "not slow"` (excludes slow tests)
+- **With `[include-slow-tests]` commit message**: Runs all tests including slow ones
+  - Prefix the commit message: `[include-slow-tests] <message>`
+  - Example: `git commit -m "[include-slow-tests] bump version: 0.1.0-dev.0 -> 0.1.0-dev.1"`
+- Tests are run in a dedicated test venv (`.venv-test`)
+
+**Slow Test Marker**:
+Tests marked with `@pytest.mark.slow` are skipped on every push by default, but included in:
+- Release workflow (manual RC releases with `skip_slow_tests=FALSE`)
+- Release workflow (automated stable releases)
 
 **Artifacts Uploaded**:
 - Individual: `{package-name}-{version}` (per package)
@@ -468,14 +490,29 @@ These artifacts are available for download in downstream workflows.
 | `check_upstream_workflow` | workflow_run (main) or workflow_dispatch | Verify upstream Main workflow succeeded, fetch run ID |
 | `setup` | all | Determine release type, validate version format |
 | `validate` | all | Check tag uniqueness, version ordering, CHANGELOG |
-| `run_tests` | all | Run test suite (placeholder) |
+| `test_packages` | all | Download built packages from upstream and run tests again |
 | `tag_and_release` | all | Download packages from upstream, create git tag, GitHub Release |
 | `sync_back` | stable only | Auto PR main→develop, auto-merge, delete release branch |
+
+**Testing in `test_packages` Job**:
+- Downloads built packages from upstream Main workflow
+- Re-runs tests against the built wheel (same as Main workflow)
+- **For manual release (workflow_dispatch)**:
+  - Respects `skip_slow_tests` input parameter (defaults to `FALSE`)
+  - If `skip_slow_tests=TRUE`: Runs `pytest -m "not slow"`
+  - If `skip_slow_tests=FALSE`: Runs all tests including slow ones
+- **For automated stable release (push to main)**:
+  - Always runs all tests including slow ones (no skipping)
 
 **Package Artifact Download**:
 - Downloads `all-packages-{version}` from upstream workflow run
 - Uses `run-id` from `check_upstream_workflow` job to identify the source workflow run
 - Packages attached to GitHub Release (RC and stable releases only)
+
+**Check Upstream Workflow**:
+- By default, checks that the Main workflow succeeded before proceeding with release
+- Can be skipped with `check_upstream_workflow=FALSE` for manual RC releases
+  - Useful when: doing RC releases while slow tests are being skipped in main workflow
 
 ### Package Build & Artifact Flow
 
@@ -529,6 +566,55 @@ Format: `## [vX.Y.Z...]` with **square brackets**.
 Uses semver semantics via `semver` library:
 - `0.1.0 > 0.1.0-rc1 > 0.1.0-rc0 > 0.1.0-dev1`
 - New version must be strictly greater than all existing tags
+
+---
+
+## Slow Tests & CI/CD Testing Strategy
+
+### Default Behavior: Fast Tests Only
+
+By default, on every push to any branch:
+- Main workflow runs only **fast tests** (excludes tests marked with `@pytest.mark.slow`)
+- This keeps CI/CD feedback loops fast (~minutes)
+- Slow tests are skipped in both Main and Release workflows
+
+### Running All Tests (Including Slow)
+
+To run all tests including slow ones on a push, add `[include-slow-tests]` to the commit message:
+
+```bash
+git commit -m "[include-slow-tests] bump version: 0.1.0-dev.0 -> 0.1.0-dev.1"
+```
+
+**What happens**:
+- Main workflow detects the prefix and runs `pytest` (no filter)
+- All tests including slow ones are executed
+- `all_checks_pass_gate` passes (because all tests were run)
+
+### Test Execution in Release Workflow
+
+**For RC releases (manual trigger)**:
+- Controlled via `skip_slow_tests` input (default: `FALSE`)
+- `FALSE`: Runs all tests
+- `TRUE`: Runs fast tests only
+
+**For stable releases (automated, push to main)**:
+- Always runs all tests (no skipping)
+- Ensures production releases are thoroughly tested
+
+### Marking Tests as Slow
+
+In your test files, mark slow tests:
+
+```python
+import pytest
+
+@pytest.mark.slow
+def test_long_running_operation():
+    # This test will be skipped on regular pushes
+    # Only runs with [include-slow-tests] or in release workflows
+    pass
+```
 
 ---
 
@@ -596,6 +682,37 @@ All must have the **same version** (unified releasing).
    - Go to Releases → latest release
    - Download `.whl` and `.tar.gz` files
 
+### Q: PR is blocked — "All tests were not run: slow tests were excluded"
+**A**: The `all_checks_pass_gate` job requires slow tests to be run on main branch pushes.
+- This ensures all changes are thoroughly tested before merging to main
+- **Solution**: Redo the commit with `[include-slow-tests]` prefix
+  ```bash
+  git commit --amend -m "[include-slow-tests] <original message>"
+  git push origin <branch> --force-with-lease
+  ```
+- Or merge to release branch instead of main (release branches don't have this gate)
+
+### Q: Release workflow failed — "Upstream workflow status: failure"
+**A**: The Main workflow must pass before the Release workflow can proceed.
+- Check the Main workflow run for failed jobs
+- Fix any failing tests or checks
+- Re-run the Main workflow or re-trigger the Release workflow after Main passes
+
+### Q: How do I skip slow tests in an RC release?
+**A**: When manually triggering the Release workflow:
+1. Go to **Actions** → **Release** → **Run workflow**
+2. Set `skip_slow_tests` to `TRUE`
+3. This will run only fast tests on the RC packages
+4. Useful when: doing quick RC releases for testing
+
+### Q: Can I skip the upstream workflow check in Release workflow?
+**A**: Yes, for manual RC releases:
+1. Go to **Actions** → **Release** → **Run workflow**
+2. Set `check_upstream_workflow` to `FALSE`
+3. The release workflow will proceed without waiting for Main workflow
+4. **Warning**: Ensure Main workflow passed before proceeding
+5. Useful when: doing RC releases while slow tests are being skipped in main workflow
+
 ---
 
 ## Validation Rules
@@ -631,14 +748,14 @@ graph TD
     subgraph develop["🔵 Develop Branch"]
         D1["develop<br/>(ongoing development)"]
         D2["Version: X.Y.Z-devN<br/>(manual edit)"]
-        D3["Trigger: workflow_dispatch"]
+        D3["Commit with or without<br/>[include-slow-tests]"]
         D1 --> D2 --> D3
     end
 
     subgraph release["🟡 Release Branch"]
         R1["release/vX.Y.Z<br/>(created manually)"]
         R2["Version: X.Y.Z-rc.0<br/>(manual edit)"]
-        R3["Trigger: workflow_dispatch"]
+        R3["Trigger: workflow_dispatch<br/>(with skip_slow_tests input)"]
         R4["Bug found?<br/>Bump rc.N, repeat"]
         R1 --> R2 --> R3
         R3 -.->|fix bugs| R4
@@ -649,8 +766,10 @@ graph TD
         MW1["Code Quality Checks"]
         MW2["Validate Version"]
         MW3["Build Packages<br/>(matrix job)"]
-        MW4["Upload Artifacts<br/>all-packages-{version}"]
-        MW1 --> MW2 --> MW3 --> MW4
+        MW4["Test Packages<br/>(pytest)<br/>Default: skip slow<br/>With [include-slow-tests]: all tests"]
+        MW5["Gate: all_checks_pass_gate<br/>(blocks PRs if slow tests skipped)"]
+        MW6["Upload Artifacts<br/>all-packages-{version}"]
+        MW1 --> MW2 --> MW3 --> MW4 --> MW5 --> MW6
     end
 
     subgraph main["🟢 Main Branch"]
@@ -658,9 +777,13 @@ graph TD
         M2["Version: X.Y.Z<br/>(manual edit on release branch)"]
         M3["PR merge: release/vX.Y.Z → main"]
         M4["Trigger: push to main (auto)"]
-        M5["Fetch packages from<br/>upstream Main workflow"]
-        M6["Tag & Release"]
-        M1 --> M2 --> M3 --> M4 --> M5 --> M6
+    end
+
+    subgraph release_workflow["🔶 Release Workflow"]
+        R5["Check: upstream Main workflow<br/>(can skip with check_upstream_workflow=FALSE)"]
+        R6["Test Packages (again)<br/>(pytest)<br/>Manual trigger: respects skip_slow_tests<br/>Auto trigger: always run all tests"]
+        R7["Tag & Release"]
+        R5 --> R6 --> R7
     end
 
     subgraph sync["🔄 Sync Back"]
@@ -673,14 +796,15 @@ graph TD
     D3 -->|push commit + Main workflow| MW1
     R3 -->|push commit + Main workflow| MW1
     M4 -->|Main workflow completed| MW1
-    MW4 -->|Artifacts ready| M5
-    M6 --> S1
+    MW6 -->|Artifacts ready| R5
+    R7 --> S1
 
     style D1 fill:#e3f2fd
     style R1 fill:#fff3e0
     style M1 fill:#e8f5e9
     style S1 fill:#f3e5f5
     style MW1 fill:#f0f4f8
+    style release_workflow fill:#fce4ec
 ```
 
 ---

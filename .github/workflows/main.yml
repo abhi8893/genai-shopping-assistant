@@ -64,7 +64,7 @@ jobs:
         id: version_check
         run: |
           source .venv/bin/activate
-          VERSION_OUTPUT=$(python3 scripts/ci/get_version.py --repo-root ${{ github.workspace }})
+          VERSION_OUTPUT=$(python3 scripts/ci/get_version.py --repo-root "${{ github.workspace }}")
           VERSION=$(echo "$VERSION_OUTPUT" | grep "^VERSION:" | cut -d' ' -f2)
 
           echo "Current version: $VERSION"
@@ -84,6 +84,7 @@ jobs:
   build_packages:
     needs: [run_checks, validate_version]
     strategy:
+      fail-fast: false
       matrix:
         # TODO: Remove dummy-pkg before release
         package: ["shopping-assistant", "dummy-pkg"]
@@ -103,7 +104,42 @@ jobs:
       - name: Build package
         run: |
           mkdir dist
-          uv build packages/${{ matrix.package }} --out-dir dist
+          uv build "packages/${{ matrix.package }}" --out-dir dist
+
+
+          WHEEL_FILE=$(ls dist/*.whl)
+          SDIST_FILE=$(ls dist/*.tar.gz)
+
+          echo "Found wheel file: $WHEEL_FILE"
+          echo "Found sdist file: $SDIST_FILE"
+
+          echo "WHEEL_FILE=$WHEEL_FILE" >> "$GITHUB_ENV"
+          echo "SDIST_FILE=$SDIST_FILE" >> "$GITHUB_ENV"
+
+      - name: Setup test environment
+        run: |
+          make venv-create COMPONENT="packages/${{ matrix.package }}" GROUP=test
+          make venv-switch COMPONENT="packages/${{ matrix.package }}" TARGET=test
+
+      - name: Test package (wheel)
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+
+          # force re-install built wheel file (to avoid running tests against local imports)
+          uv pip install "$WHEEL_FILE" --force-reinstall --python "packages/${{ matrix.package }}/.venv"
+          cd packages/${{ matrix.package }}
+
+          source .venv/bin/activate
+
+          # check if commit message starts with [include-slow-tests]
+          if [[ "$COMMIT_MESSAGE" == "[include-slow-tests]"* ]]; then
+            echo "Running all tests including slow ones"
+            pytest
+          else
+            echo "Running tests excluding slow ones"
+            pytest -m "not slow"
+          fi
 
       - name: Upload package artifact
         uses: actions/upload-artifact@v4
@@ -125,3 +161,21 @@ jobs:
         with:
           name: all-packages-${{ needs.validate_version.outputs.version }}
           path: dist/
+
+  all_checks_pass_gate:
+    needs: [upload_packages]
+    runs-on: ubuntu-latest
+    env:
+      COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+    steps:
+      - name: Check if all tests were run (and passed)
+        run: |
+          # TODO: Make this generic enough to not rely on commit message at two places to
+          #       identify if all or partial tests were run
+          if [[ "$COMMIT_MESSAGE" == "[include-slow-tests]"* ]]; then
+            echo "All tests were run (including slow ones)"
+            exit 0
+          else
+            echo "All tests were not run: slow tests were excluded. Failing the workflow."
+            exit 1
+          fi
