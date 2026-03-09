@@ -177,7 +177,7 @@ jobs:
           PACKAGES=("shopping-assistant" "dummy-pkg")
 
           for pkg in "${PACKAGES[@]}"; do
-              pkg_var=${pkg//-/_}                     # shopping-assistant -> shopping_assistant
+              pkg_var="${pkg//-/_}"                     # shopping-assistant -> shopping_assistant
               status_var="TEST_STATUS_${pkg_var}"     # TEST_STATUS_shopping_assistant
 
               echo "$status_var: ${!status_var}"
@@ -192,7 +192,7 @@ jobs:
               fi
           done
 
-          if [ $fail_count -gt 0 ]; then
+          if [ "$fail_count" -gt 0 ]; then
               echo "Some packages failed to run all tests"
               exit 1
           fi
