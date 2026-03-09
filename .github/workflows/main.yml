@@ -125,12 +125,23 @@ jobs:
     needs: [validate_version, build_packages]
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         package: ["shopping-assistant", "dummy-pkg"]
     steps:
       # TODO: Avoid checking out code if wheel can contain "tests" folder
+      # TODO: Perhaps test with build in one matrix is better. 
+      #       The tests step could just add test report as artifact which could be downloaded
+      #       separately to tag as ALL or PARTIAL
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Set up Python
+        run: uv python install "${{ env.PYTHON_VERSION }}"
+
       
       - name: Download package artifact
         uses: actions/download-artifact@v4
