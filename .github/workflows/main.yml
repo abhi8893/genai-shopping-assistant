@@ -87,8 +87,7 @@ jobs:
       fail-fast: false
       matrix:
         # TODO: Remove dummy-pkg before release
-        package: ["shopping-assistant", "dummy-pkg"]
-    
+        package: ["shopping-assistant", "dummy-pkg"] 
     runs-on: ubuntu-latest
 
     steps:
@@ -106,15 +105,38 @@ jobs:
           mkdir dist
           uv build "packages/${{ matrix.package }}" --out-dir dist
 
-
           WHEEL_FILE=$(ls dist/*.whl)
           SDIST_FILE=$(ls dist/*.tar.gz)
 
-          echo "Found wheel file: $WHEEL_FILE"
-          echo "Found sdist file: $SDIST_FILE"
+          echo "Created wheel file: $WHEEL_FILE"
+          echo "Created sdist file: $SDIST_FILE"
 
           echo "WHEEL_FILE=$WHEEL_FILE" >> "$GITHUB_ENV"
           echo "SDIST_FILE=$SDIST_FILE" >> "$GITHUB_ENV"
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.package }}-${{ needs.validate_version.outputs.version }}
+          path: dist/
+
+
+  test_packages:
+    needs: [validate_version, build_packages]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        package: ["shopping-assistant", "dummy-pkg"]
+    steps:
+      # TODO: Avoid checking out code if wheel can contain "tests" folder
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Download package artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.package }}-${{ needs.validate_version.outputs.version }}
+          path: dist/
 
       - name: Setup test environment
         run: |
@@ -126,34 +148,44 @@ jobs:
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
 
+          WHEEL_FILE=$(ls dist/*.whl)
+          SDIST_FILE=$(ls dist/*.tar.gz)
+
+          echo "Found wheel file: $WHEEL_FILE"
+          echo "Found sdist file: $SDIST_FILE"
+
           # force re-install built wheel file (to avoid running tests against local imports)
           uv pip install "$WHEEL_FILE" --force-reinstall --python "packages/${{ matrix.package }}/.venv"
           cd packages/${{ matrix.package }}
 
           source .venv/bin/activate
 
+          pkg="${{ matrix.package }}"
+          pkg_var="${pkg//-/_}" 
+          status_var="TEST_STATUS_${pkg_var}" 
+
           # check if commit message starts with [include-slow-tests]
           # Always run all tests if the branch is in [develop, main, fix/develop-ci-tests-bug]
           if [[ "$COMMIT_MESSAGE" == "[include-slow-tests]"* ]] && [[ "${{ github.ref_name }}" != "develop" ]] && [[ "${{ github.ref_name }}" != "main" ]]; then
             echo "Running all tests including slow ones"
-
-            pkg="${{ matrix.package }}"
-            pkg_var="${pkg//-/_}" 
-            status_var="TEST_STATUS_${pkg_var}" 
-            
-            echo "${status_var}=ALL" >> "$GITHUB_OUTPUT"
             pytest
+            echo "${status_var}=ALL" >> "$GITHUB_ENV"
           else
             echo "Running tests excluding slow ones"
-            echo "TEST_STATUS_${{ matrix.package }}=PARTIAL" >> "$GITHUB_OUTPUT"
             pytest -m "not slow"
+            echo "${status_var}=PARTIAL" >> "$GITHUB_ENV"
           fi
 
-      - name: Upload package artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.package }}-${{ needs.validate_version.outputs.version }}
-          path: dist/
+      - name: Test status (ALL or PARTIAL)
+        run: |
+          
+          if [ "${{ env.TEST_STATUS }}" = "ALL" ]; then
+            echo "All tests passed"
+            exit 0
+          else
+            echo "Partial tests passed"
+            exit 1
+          fi
 
 
   upload_packages:
@@ -170,36 +202,36 @@ jobs:
           name: all-packages-${{ needs.validate_version.outputs.version }}
           path: dist/
 
-  all_checks_pass_gate:
-    needs: [upload_packages]
-    runs-on: ubuntu-latest
-    env:
-      COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
-    steps:
-      - name: Check if all tests were run (and passed)
-        run: |
+  # all_checks_pass_gate:
+  #   needs: [upload_packages]
+  #   runs-on: ubuntu-latest
+  #   env:
+  #     COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+  #   steps:
+  #     - name: Check if all tests were run (and passed)
+  #       run: |
 
-          PACKAGES=("shopping-assistant" "dummy-pkg")
+  #         PACKAGES=("shopping-assistant" "dummy-pkg")
 
-          for pkg in "${PACKAGES[@]}"; do
-              pkg_var="${pkg//-/_}"                     # shopping-assistant -> shopping_assistant
-              status_var="TEST_STATUS_${pkg_var}"       # TEST_STATUS_shopping_assistant
+  #         for pkg in "${PACKAGES[@]}"; do
+  #             pkg_var="${pkg//-/_}"                     # shopping-assistant -> shopping_assistant
+  #             status_var="TEST_STATUS_${pkg_var}"       # TEST_STATUS_shopping_assistant
 
-              echo "$status_var: ${!status_var}"
+  #             echo "$status_var: ${!status_var}"
 
-              fail_count=0
+  #             fail_count=0
 
-              if [[ "${!status_var}" == "ALL" ]]; then
-                  echo "All tests were run for $pkg"
-              else
-                  echo "Not all tests were run for $pkg"
-                  ((fail_count++))
-              fi
-          done
+  #             if [[ "${!status_var}" == "ALL" ]]; then
+  #                 echo "All tests were run for $pkg"
+  #             else
+  #                 echo "Not all tests were run for $pkg"
+  #                 ((fail_count++))
+  #             fi
+  #         done
 
-          if [ "$fail_count" -gt 0 ]; then
-              echo "Some packages failed to run all tests"
-              exit 1
-          fi
+  #         if [ "$fail_count" -gt 0 ]; then
+  #             echo "Some packages failed to run all tests"
+  #             exit 1
+  #         fi
 
-          echo "Fail count: $fail_count"
+  #         echo "Fail count: $fail_count"
