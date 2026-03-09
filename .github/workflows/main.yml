@@ -133,7 +133,8 @@ jobs:
           source .venv/bin/activate
 
           # check if commit message starts with [include-slow-tests]
-          if [[ "$COMMIT_MESSAGE" == "[include-slow-tests]"* ]]; then
+          # Always run all tests if the branch is in [develop, main, fix/develop-ci-tests-bug]
+          if [[ "$COMMIT_MESSAGE" == "[include-slow-tests]"* ]] && [[ "${{ github.ref_name }}" != "develop" ]] && [[ "${{ github.ref_name }}" != "main" ]]; then
             echo "Running all tests including slow ones"
             pytest
           else
