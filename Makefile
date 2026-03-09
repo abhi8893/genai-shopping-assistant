@@ -122,10 +122,24 @@ venv-create:
 ifndef COMPONENT
 	$(error COMPONENT is required. Usage: make venv-create COMPONENT=packages/shopping-assistant [GROUP=dev|prod])
 endif
-	@python3 scripts/create_venv.py --repo-root $(REPO_ROOT) --component $(COMPONENT) --group $(if $(GROUP),$(GROUP),prod)
+	@skip=0; \
+	if [ "$(MISSING_ONLY)" = "true" ]; then \
+		if python3 scripts/check_venv_exists.py --repo-root $(REPO_ROOT) --component $(COMPONENT) --group $(if $(GROUP),$(GROUP),prod) > /dev/null 2>&1; then \
+			echo "Venv already exists for $(COMPONENT) with group $(if $(GROUP),$(GROUP),prod) - skipping"; \
+			skip=1; \
+		fi; \
+	fi; \
+	if [ "$$skip" -eq 0 ]; then \
+		python3 scripts/create_venv.py --repo-root $(REPO_ROOT) --component $(COMPONENT) --group $(if $(GROUP),$(GROUP),prod); \
+	fi
+
 	@echo ""
 	@echo "----------------------------------------"
-	@$(MAKE) -s venv-get-active
+
+	@PRINT_SUMMARY=$(if $(PRINT_SUMMARY),$(PRINT_SUMMARY),true); \
+	if [ "$(PRINT_SUMMARY)" = "true" ]; then \
+		@$(MAKE) -s venv-get-active; \
+	fi
 
 .PHONY: venv-clean
 venv-clean:
@@ -406,6 +420,7 @@ show-gone-branches:
 	fi
 
 
-test:
-	. ./packages/shopping-assistant/.venv/bin/activate
+test-package:
+	make venv-create COMPONENT=packages/$(PACKAGE) GROUP=test MISSING_ONLY=true PRINT_SUMMARY=false
+	cd packages/$(PACKAGE) && source .venv-test/bin/activate && pytest -m "not ci"
 	
