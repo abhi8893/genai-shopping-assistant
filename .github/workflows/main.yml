@@ -136,9 +136,11 @@ jobs:
           # Always run all tests if the branch is in [develop, main, fix/develop-ci-tests-bug]
           if [[ "$COMMIT_MESSAGE" == "[include-slow-tests]"* ]] && [[ "${{ github.ref_name }}" != "develop" ]] && [[ "${{ github.ref_name }}" != "main" ]]; then
             echo "Running all tests including slow ones"
+            echo "TEST_STATUS_${{ matrix.package }}=ALL" >> "$GITHUB_OUTPUT"
             pytest
           else
             echo "Running tests excluding slow ones"
+            echo "TEST_STATUS_${{ matrix.package }}=PARTIAL" >> "$GITHUB_OUTPUT"
             pytest -m "not slow"
           fi
 
@@ -171,12 +173,28 @@ jobs:
     steps:
       - name: Check if all tests were run (and passed)
         run: |
-          # TODO: Make this generic enough to not rely on commit message at two places to
-          #       identify if all or partial tests were run
-          if [[ "$COMMIT_MESSAGE" == "[include-slow-tests]"* ]]; then
-            echo "All tests were run (including slow ones)"
-            exit 0
-          else
-            echo "All tests were not run: slow tests were excluded. Failing the workflow."
-            exit 1
+
+          PACKAGES=("shopping-assistant" "dummy-pkg")
+
+          for pkg in "${PACKAGES[@]}"; do
+              pkg_var=${pkg//-/_}                     # shopping-assistant -> shopping_assistant
+              status_var="TEST_STATUS_${pkg_var}"     # TEST_STATUS_shopping_assistant
+
+              echo "$status_var: ${!status_var}"
+
+              fail_count=0
+
+              if [[ "${!status_var}" == "ALL" ]]; then
+                  echo "All tests were run for $pkg"
+              else
+                  echo "Not all tests were run for $pkg"
+                  ((fail_count++))
+              fi
+          done
+
+          if [ $fail_count -gt 0 ]; then
+              echo "Some packages failed to run all tests"
+              exit 1
           fi
+
+          echo "Fail count: $fail_count"
