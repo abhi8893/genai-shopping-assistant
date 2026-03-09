@@ -458,20 +458,25 @@ git push origin --delete release/v0.1.0
 |-----|---------|---------|
 | `run_checks` | all branches | Code quality checks (linting, formatting, security) |
 | `validate_version` | all branches | Version validation and consistency checks |
-| `build_packages` | all branches (matrix) | Build and test packages (wheels, sdists) for each component |
+| `build_packages` | all branches (matrix) | Build packages (wheels, sdists) for each component |
+| `test_packages` | all branches (after build) | Test built packages against the wheel artifact |
 | `upload_packages` | all branches | Collect and upload all package artifacts |
-| `all_checks_pass_gate` | all branches | Gate: Ensures all tests were run (blocks PRs if slow tests skipped) |
+| `final_status` | all branches | Gate: Fails if test_packages had failures (blocks PRs if slow tests skipped) |
 
-**Testing in `build_packages` Job**:
-- After building a wheel, packages are tested against the built wheel (not editable install)
+**Testing in `test_packages` Job**:
+- Runs after packages are built
+- Downloads built wheel artifact and tests against it (not editable install)
 - **By default**: Runs `pytest -m "not slow"` (excludes slow tests)
 - **With `[include-slow-tests]` commit message**: Runs all tests including slow ones
   - Prefix the commit message: `[include-slow-tests] <message>`
   - Example: `git commit -m "[include-slow-tests] bump version: 0.1.0-dev.0 -> 0.1.0-dev.1"`
+  - Also enabled on `develop`, `main`, and `fix/develop-ci-tests-bug` branches
 - Tests are run in a dedicated test venv (`.venv-test`)
+- **Fails if partial tests are run**: The job exits with code 1 if slow tests are skipped (PARTIAL), blocking the PR
 
 **Slow Test Marker**:
-Tests marked with `@pytest.mark.slow` are skipped on every push by default, but included in:
+Tests marked with `@pytest.mark.slow` are skipped on most branches by default, but included in:
+- Main workflow on `develop`, `main`, and `fix/develop-ci-tests-bug` branches (always run all tests)
 - Release workflow (manual RC releases with `skip_slow_tests=FALSE`)
 - Release workflow (automated stable releases)
 
@@ -682,15 +687,15 @@ All must have the **same version** (unified releasing).
    - Go to Releases → latest release
    - Download `.whl` and `.tar.gz` files
 
-### Q: PR is blocked — "All tests were not run: slow tests were excluded"
-**A**: The `all_checks_pass_gate` job requires slow tests to be run on main branch pushes.
+### Q: PR is blocked — "One or more jobs failed or were cancelled"
+**A**: The `final_status` job failed because `test_packages` ran with only partial tests (slow tests skipped).
 - This ensures all changes are thoroughly tested before merging to main
 - **Solution**: Redo the commit with `[include-slow-tests]` prefix
   ```bash
   git commit --amend -m "[include-slow-tests] <original message>"
   git push origin <branch> --force-with-lease
   ```
-- Or merge to release branch instead of main (release branches don't have this gate)
+- Or if you're on `develop`, `main`, or `fix/develop-ci-tests-bug`, the tests should run automatically (all tests included)
 
 ### Q: Release workflow failed — "Upstream workflow status: failure"
 **A**: The Main workflow must pass before the Release workflow can proceed.
@@ -766,10 +771,11 @@ graph TD
         MW1["Code Quality Checks"]
         MW2["Validate Version"]
         MW3["Build Packages<br/>(matrix job)"]
-        MW4["Test Packages<br/>(pytest)<br/>Default: skip slow<br/>With [include-slow-tests]: all tests"]
-        MW5["Gate: all_checks_pass_gate<br/>(blocks PRs if slow tests skipped)"]
-        MW6["Upload Artifacts<br/>all-packages-{version}"]
-        MW1 --> MW2 --> MW3 --> MW4 --> MW5 --> MW6
+        MW4["Test Packages<br/>(matrix job, after build)<br/>Default: skip slow<br/>With [include-slow-tests]: all tests<br/>develop/main/fix/*: always all tests"]
+        MW5["Upload Artifacts<br/>all-packages-{version}"]
+        MW6["final_status Gate<br/>(fails if test_packages<br/>had partial test runs)"]
+        MW1 --> MW2 --> MW3 --> MW4 --> MW5
+        MW4 --> MW6
     end
 
     subgraph main["🟢 Main Branch"]

@@ -29,5 +29,5 @@ def test_small():
 
 @pytest.mark.slow
 def test_long_running():
-    time.sleep(5)
+    time.sleep(0.1)
     assert True
