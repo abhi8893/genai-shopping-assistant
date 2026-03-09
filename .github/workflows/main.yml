@@ -171,8 +171,8 @@ jobs:
 
           source .venv/bin/activate
 
-          pkg="${{ matrix.package }}"
-          pkg_var="${pkg//-/_}" 
+          # pkg="${{ matrix.package }}"
+          # pkg_var="${pkg//-/_}" 
           status_var="TEST_STATUS" 
 
           # check if commit message starts with [include-slow-tests]
