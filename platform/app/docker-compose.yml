@@ -37,7 +37,7 @@ services:
       context: ${REPO_ROOT}
       dockerfile: services/shopping-assistant/Dockerfile
       target: prod
-    image: shopping-assistant:prod
+    image: shopping-assistant:${IMAGE_TAG}
     ports:
       - "${SHOPPING_ASSISTANT_PORT}:8010"
     environment:
@@ -59,7 +59,7 @@ services:
       context: ${REPO_ROOT}
       dockerfile: services/ecom-backend/Dockerfile
       target: prod
-    image: ecom-backend:prod
+    image: ecom-backend:${IMAGE_TAG}
     ports:
       - "${ECOM_API_PORT}:8000"      
 
