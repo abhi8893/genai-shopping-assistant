@@ -52,9 +52,7 @@ services:
       LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY}
       LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY}
       LANGFUSE_BASE_URL: ${LANGFUSE_BASE_URL}
-
-      # Accessing the ECOM API running on host machine from the chatbot container
-      ECOM_API_BASE_URL: 'http://ecom-backend:${ECOM_API_PORT}/api/v1'
+      ECOM_API_BASE_URL: 'http://ecom-backend:8000/api/v1'
 
   ecom-backend:
     build:
