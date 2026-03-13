@@ -9,12 +9,29 @@ on:
 
 env:
   PYTHON_VERSION: "3.12"
+  PACKAGES_RUN_ALL_TESTS: "true"
+  SERVICES_BUILD_IMAGES: "true"
 
 
 jobs:
+
+  setup:
+    name: Setup
+    runs-on: ubuntu-latest
+    outputs:
+      PACKAGES_RUN_ALL_TESTS: ${{ env.PACKAGES_RUN_ALL_TESTS }}
+      SERVICES_BUILD_IMAGES: ${{ env.SERVICES_BUILD_IMAGES }}
+      PYTHON_VERSION: ${{ env.PYTHON_VERSION }}
+
+    steps:
+      # TODO: Find a better way to make variables available to other jobs
+      - name: Does nothing - placeholder since no setup logic needed yet
+        run: echo "Setup step placeholder"
+    
   
   run_checks:
     name: Code Quality Checks
+    needs: setup
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -24,7 +41,7 @@ jobs:
         uses: astral-sh/setup-uv@v7
 
       - name: Set up Python
-        run: uv python install "${{ env.PYTHON_VERSION }}"
+        run: uv python install "${{ needs.setup.outputs.PYTHON_VERSION }}"
 
       - name: Setup code quality env
         run: |
@@ -39,6 +56,7 @@ jobs:
 
   validate_version:
     name: Validate Version
+    needs: setup
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version_check.outputs.version }}
@@ -53,7 +71,7 @@ jobs:
         uses: astral-sh/setup-uv@v7
 
       - name: Set up Python
-        run: uv python install "${{ env.PYTHON_VERSION }}"
+        run: uv python install "${{ needs.setup.outputs.PYTHON_VERSION }}"
 
       - name: Setup virtual environment
         run: |
@@ -82,7 +100,7 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
   build_packages:
-    needs: [run_checks, validate_version]
+    needs: [setup, run_checks, validate_version]
     strategy:
       fail-fast: false
       matrix:
@@ -98,7 +116,7 @@ jobs:
         uses: astral-sh/setup-uv@v7
 
       - name: Set up Python
-        run: uv python install "${{ env.PYTHON_VERSION }}"
+        run: uv python install "${{ needs.setup.outputs.PYTHON_VERSION }}"
 
       - name: Build package
         run: |
@@ -122,7 +140,7 @@ jobs:
 
 
   test_packages:
-    needs: [validate_version, build_packages]
+    needs: [setup, validate_version, build_packages]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -140,7 +158,7 @@ jobs:
         uses: astral-sh/setup-uv@v7
 
       - name: Set up Python
-        run: uv python install "${{ env.PYTHON_VERSION }}"
+        run: uv python install "${{ needs.setup.outputs.PYTHON_VERSION }}"
 
       
       - name: Download package artifact
@@ -177,7 +195,7 @@ jobs:
 
           # check if commit message starts with [include-slow-tests]
           # Always run all tests if the branch is in [develop, main, fix/develop-ci-tests-bug]
-          if [[ "$COMMIT_MESSAGE" == "[include-slow-tests]"* ]] || [[ "${{ github.ref_name }}" = "develop" ]] || [[ "${{ github.ref_name }}" = "main" ]]; then
+          if [[ "${{ needs.setup.outputs.PACKAGES_RUN_ALL_TESTS }}" == "true" ]] || [[ "${{ github.ref_name }}" = "develop" ]] || [[ "${{ github.ref_name }}" = "main" ]]; then
             echo "Running all tests including slow ones"
             pytest
             echo "${status_var}=ALL" >> "$GITHUB_ENV"
@@ -212,11 +230,88 @@ jobs:
         with:
           name: all-packages-${{ needs.validate_version.outputs.version }}
           path: dist/
-
   
+
+  build_services:
+    if: ${{ needs.setup.outputs.SERVICES_BUILD_IMAGES == 'true'  ||  github.ref_name == 'develop'  ||  github.ref_name == 'main' }}
+
+    runs-on: ubuntu-latest
+    needs: setup
+    permissions:
+      contents: read
+      packages: write
+    
+    strategy:
+      matrix:
+        service: [ecom-backend, shopping-assistant]
+    env:
+      REGISTRY: ghcr.io/${{ github.repository }}/
+      DOCKER_BUILDKIT: 1
+      COMPOSE_DOCKER_CLI_BUILD: 1
+
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set image uri
+        run: |
+          
+          # get branch name slug
+          BRANCH_NAME=$(make slugify STR="${{ github.ref_name }}")
+          SHORT_SHA=${{ github.sha }}
+          SHORT_SHA=${SHORT_SHA:0:7}
+          IMAGE_CACHE_TAG="${BRANCH_NAME}-latest"
+          IMAGE_PUSH_TAG="${BRANCH_NAME}-${SHORT_SHA}"
+          echo "IMAGE_PUSH_TAG=${IMAGE_PUSH_TAG}" >> "$GITHUB_ENV"
+
+          # Remove trailing slash from registry
+          REGISTRY="${{ env.REGISTRY }}"
+          REGISTRY="${REGISTRY%/}"
+          
+          echo "IMAGE_CACHE_URI=${REGISTRY}/${{ matrix.service }}:${IMAGE_CACHE_TAG}" >> "$GITHUB_ENV"
+          echo "IMAGE_PUSH_URI=${REGISTRY}/${{ matrix.service }}:${IMAGE_PUSH_TAG}" >> "$GITHUB_ENV"
+
+      - name: Pull latest image
+        run: |
+          echo "Pulling latest image for ${{ matrix.service }}"
+          docker pull "${{ env.IMAGE_CACHE_URI }}" || true
+
+      - name: Build Docker image
+        run: |
+          echo "Building Docker image for ${{ matrix.service }}"
+          export IMAGE_TAG="${{ env.IMAGE_PUSH_TAG }}"
+          make app-prod CI=true SERVICES="${{ matrix.service }}"
+
+      - name: Push Docker image
+        run: |
+          echo "Pushing Docker image for ${{ matrix.service }}"
+          docker push "${{ env.IMAGE_PUSH_URI }}"
+      
+      - name: Unit tests
+        run: |
+          echo "Running unit tests for ${{ matrix.service }}"
+          docker run --rm "${{ env.IMAGE_PUSH_URI }}" \
+            sh -c "uv pip install --system . --group test && uv run pytest tests/unit"
+
+      - name: Retag and push cache image
+        run: |
+          echo "Retagging and pushing cache image for ${{ matrix.service }}"
+          docker tag "${{ env.IMAGE_PUSH_URI }}" "${{ env.IMAGE_CACHE_URI }}"
+          docker push "${{ env.IMAGE_CACHE_URI }}"
+
+
+          
   final_status:
     runs-on: ubuntu-latest
-    needs: [test_packages]
+    needs: [test_packages, build_services]
     if: always()
     steps:
       - name: Check for any failures

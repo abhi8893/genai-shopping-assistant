@@ -3,15 +3,15 @@ services:
   shopping-assistant:
     build:
       target: dev
-    image: shopping-assistant:dev
+    image: ${REGISTRY:-}shopping-assistant:${IMAGE_TAG}
     volumes:
       - ${REPO_ROOT}/services/shopping-assistant:/project/services/shopping-assistant
       - ${REPO_ROOT}/packages/shopping-assistant:/project/packages/shopping-assistant
 
-
+  
   ecom-backend:
     build:
       target: dev
-    image: ecom-backend:dev
+    image: ${REGISTRY:-}ecom-backend:${IMAGE_TAG}
     volumes:
       - ${REPO_ROOT}/services/ecom-backend:/project/services/ecom-backend

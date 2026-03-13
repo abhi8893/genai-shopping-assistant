@@ -37,7 +37,7 @@ services:
       context: ${REPO_ROOT}
       dockerfile: services/shopping-assistant/Dockerfile
       target: prod
-    image: shopping-assistant:prod
+    image: ${REGISTRY:-}shopping-assistant:${IMAGE_TAG}
     ports:
       - "${SHOPPING_ASSISTANT_PORT}:8010"
     environment:
@@ -52,16 +52,14 @@ services:
       LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY}
       LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY}
       LANGFUSE_BASE_URL: ${LANGFUSE_BASE_URL}
-
-      # Accessing the ECOM API running on host machine from the chatbot container
-      ECOM_API_BASE_URL: 'http://ecom-backend:${ECOM_API_PORT}/api/v1'
+      ECOM_API_BASE_URL: 'http://ecom-backend:8000/api/v1'
 
   ecom-backend:
     build:
       context: ${REPO_ROOT}
       dockerfile: services/ecom-backend/Dockerfile
       target: prod
-    image: ecom-backend:prod
+    image: ${REGISTRY:-}ecom-backend:${IMAGE_TAG}
     ports:
       - "${ECOM_API_PORT}:8000"      
 

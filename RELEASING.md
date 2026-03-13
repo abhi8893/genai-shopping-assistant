@@ -212,6 +212,7 @@ Examples: 0.1.0-dev.0, 0.1.0-dev.1, 0.2.0-dev.0
    - Workflow will:
      - Validate version format (`X.Y.Z-dev.N`)
      - Create git tag `v0.1.0-dev.1`
+     - Build and push service images (if `SERVICES_BUILD_IMAGES` enabled)
      - **NOT** create a GitHub release (dev releases are internal snapshots)
 
 **Result**:
@@ -302,6 +303,7 @@ Examples: 0.1.0-dev.0, 0.1.0-dev.1, 0.2.0-dev.0
      - Run tests on built packages (respecting `skip_slow_tests` parameter)
      - Create git tag `v0.1.0-rc.0`
      - Create GitHub Release (marked as **pre-release**)
+     - Build and push service images tagged with RC version (if `SERVICES_BUILD_IMAGES` enabled)
 
 **If bugs found**:
 
@@ -406,6 +408,7 @@ Examples: 0.1.0-dev.0, 0.1.0-dev.1, 0.2.0-dev.0
    - Validates CHANGELOG entry: `[v0.1.0]`
    - Creates git tag: `v0.1.0`
    - Creates GitHub Release (stable)
+   - Builds and pushes service images tagged with stable version and `latest` (if `SERVICES_BUILD_IMAGES` enabled)
 
 **Result**:
 - ✅ Git tag: `v0.1.0`
@@ -450,7 +453,7 @@ git push origin --delete release/v0.1.0
 
 ## CI/CD Integration
 
-### Workflow: `.github/workflows/main.yml` (Package Builds & Testing)
+### Workflow: `.github/workflows/main.yml` (Package Builds, Service Images & Testing)
 
 **Jobs**:
 
@@ -459,18 +462,31 @@ git push origin --delete release/v0.1.0
 | `run_checks` | all branches | Code quality checks (linting, formatting, security) |
 | `validate_version` | all branches | Version validation and consistency checks |
 | `build_packages` | all branches (matrix) | Build packages (wheels, sdists) for each component |
+| `build_services` | all branches (conditional) | Build service container images with Docker BuildKit (matrix job, optional) |
 | `test_packages` | all branches (after build) | Test built packages against the wheel artifact |
 | `upload_packages` | all branches | Collect and upload all package artifacts |
 | `final_status` | all branches | Gate: Fails if test_packages had failures (blocks PRs if slow tests skipped) |
+
+**Service Image Builds in `build_services` Job**:
+- Builds Docker container images for services using Docker BuildKit
+- **Conditional**: Controlled via environment variable `SERVICES_BUILD_IMAGES`
+  - Always enabled on `develop` and `main` branches
+  - Optional on feature branches (disabled by default)
+- **Build features**:
+  - Docker BuildKit support with inline cache (`BUILDKIT_INLINE_CACHE=1`)
+  - Cache layers tagged with `{branch_slug}-latest`
+  - Images tagged with `{REGISTRY}/{service}:{IMAGE_TAG}`
+  - Environment: Uses `.env.ci` for build configuration
+- **Matrix job**: Builds images for each service in the monorepo
+- Images are cached and reused in downstream release workflows
 
 **Testing in `test_packages` Job**:
 - Runs after packages are built
 - Downloads built wheel artifact and tests against it (not editable install)
 - **By default**: Runs `pytest -m "not slow"` (excludes slow tests)
-- **With `[include-slow-tests]` commit message**: Runs all tests including slow ones
-  - Prefix the commit message: `[include-slow-tests] <message>`
-  - Example: `git commit -m "[include-slow-tests] bump version: 0.1.0-dev.0 -> 0.1.0-dev.1"`
-  - Also enabled on `develop`, `main`, and `fix/develop-ci-tests-bug` branches
+- **With `PACKAGES_RUN_ALL_TESTS` env var**: Runs all tests including slow ones
+  - Set environment variable before pushing: `export PACKAGES_RUN_ALL_TESTS=true`
+  - Also enabled by default on `develop`, `main`, and `fix/develop-ci-tests-bug` branches
 - Tests are run in a dedicated test venv (`.venv-test`)
 - **Fails if partial tests are run**: The job exits with code 1 if slow tests are skipped (PARTIAL), blocking the PR
 
@@ -497,6 +513,7 @@ These artifacts are available for download in downstream workflows.
 | `validate` | all | Check tag uniqueness, version ordering, CHANGELOG |
 | `test_packages` | all | Download built packages from upstream and run tests again |
 | `tag_and_release` | all | Download packages from upstream, create git tag, GitHub Release |
+| `retag_and_push_service_images` | all (conditional) | Pull service images from cache, retag with version/release tag, push to registry |
 | `sync_back` | stable only | Auto PR main→develop, auto-merge, delete release branch |
 
 **Testing in `test_packages` Job**:
@@ -505,9 +522,19 @@ These artifacts are available for download in downstream workflows.
 - **For manual release (workflow_dispatch)**:
   - Respects `skip_slow_tests` input parameter (defaults to `FALSE`)
   - If `skip_slow_tests=TRUE`: Runs `pytest -m "not slow"`
-  - If `skip_slow_tests=FALSE`: Runs all tests including slow ones
+  - If `skip_slow_tests=FALSE`: Runs all tests including slow ones (respects `PACKAGES_RUN_ALL_TESTS` if set)
 - **For automated stable release (push to main)**:
   - Always runs all tests including slow ones (no skipping)
+
+**Service Image Retag & Push in `retag_and_push_service_images` Job**:
+- Pulls service images cached from Main workflow build
+- Retagged with version and release tags (e.g., `v0.1.0`, `latest` for stable)
+- **For dev releases**: Retagged with commit SHA and branch slug
+- **For RC releases**: Retagged with RC version tag
+- **For stable releases**: Retagged with stable version tag
+- Pushed to container registry specified in `.env.ci`
+- Docker login required (from GitHub Secrets)
+- **Conditional**: Only runs if `SERVICES_BUILD_IMAGES` is enabled
 
 **Package Artifact Download**:
 - Downloads `all-packages-{version}` from upstream workflow run
@@ -518,6 +545,7 @@ These artifacts are available for download in downstream workflows.
 - By default, checks that the Main workflow succeeded before proceeding with release
 - Can be skipped with `check_upstream_workflow=FALSE` for manual RC releases
   - Useful when: doing RC releases while slow tests are being skipped in main workflow
+- Ensures both package builds and service image builds are complete (if enabled)
 
 ### Package Build & Artifact Flow
 
@@ -585,16 +613,11 @@ By default, on every push to any branch:
 
 ### Running All Tests (Including Slow)
 
-To run all tests including slow ones on a push, add `[include-slow-tests]` to the commit message:
-
-```bash
-git commit -m "[include-slow-tests] bump version: 0.1.0-dev.0 -> 0.1.0-dev.1"
-```
-
+To run all tests including slow ones on a push, set the `PACKAGES_RUN_ALL_TESTS` environment variable.
 **What happens**:
-- Main workflow detects the prefix and runs `pytest` (no filter)
+- Main workflow detects `PACKAGES_RUN_ALL_TESTS=true` and runs `pytest` (no filter)
 - All tests including slow ones are executed
-- `all_checks_pass_gate` passes (because all tests were run)
+- `final_status` gate passes (because all tests were run)
 
 ### Test Execution in Release Workflow
 
@@ -690,10 +713,10 @@ All must have the **same version** (unified releasing).
 ### Q: PR is blocked — "One or more jobs failed or were cancelled"
 **A**: The `final_status` job failed because `test_packages` ran with only partial tests (slow tests skipped).
 - This ensures all changes are thoroughly tested before merging to main
-- **Solution**: Redo the commit with `[include-slow-tests]` prefix
+- **Solution**: Set `PACKAGES_RUN_ALL_TESTS` environment variable and re-push
   ```bash
-  git commit --amend -m "[include-slow-tests] <original message>"
-  git push origin <branch> --force-with-lease
+  export PACKAGES_RUN_ALL_TESTS=true
+  git push origin <branch>
   ```
 - Or if you're on `develop`, `main`, or `fix/develop-ci-tests-bug`, the tests should run automatically (all tests included)
 
@@ -771,10 +794,13 @@ graph TD
         MW1["Code Quality Checks"]
         MW2["Validate Version"]
         MW3["Build Packages<br/>(matrix job)"]
-        MW4["Test Packages<br/>(matrix job, after build)<br/>Default: skip slow<br/>With [include-slow-tests]: all tests<br/>develop/main/fix/*: always all tests"]
+        MW3b["Build Service Images<br/>(matrix job, optional)<br/>SERVICES_BUILD_IMAGES env var<br/>Always on: develop/main<br/>Uses: Docker BuildKit + cache"]
+        MW4["Test Packages<br/>(matrix job, after build)<br/>Default: skip slow<br/>With PACKAGES_RUN_ALL_TESTS: all tests<br/>develop/main/fix/*: always all tests"]
         MW5["Upload Artifacts<br/>all-packages-{version}"]
         MW6["final_status Gate<br/>(fails if test_packages<br/>had partial test runs)"]
-        MW1 --> MW2 --> MW3 --> MW4 --> MW5
+        MW1 --> MW2 --> MW3
+        MW3 --> MW3b
+        MW3b --> MW4 --> MW5
         MW4 --> MW6
     end
 
@@ -788,8 +814,10 @@ graph TD
     subgraph release_workflow["🔶 Release Workflow"]
         R5["Check: upstream Main workflow<br/>(can skip with check_upstream_workflow=FALSE)"]
         R6["Test Packages (again)<br/>(pytest)<br/>Manual trigger: respects skip_slow_tests<br/>Auto trigger: always run all tests"]
-        R7["Tag & Release"]
+        R7["Tag & Release<br/>(create git tag, GitHub Release)"]
+        R7b["Retag & Push Service Images<br/>(optional, if SERVICES_BUILD_IMAGES)<br/>Pull cached images → Retag → Push<br/>Tags: version, release type, latest"]
         R5 --> R6 --> R7
+        R7 --> R7b
     end
 
     subgraph sync["🔄 Sync Back"]
@@ -817,11 +845,11 @@ graph TD
 
 ## Summary
 
-| Phase | Branch | Version | Trigger | GitHub Release |
-|-------|--------|---------|---------|-----------------|
-| Development | `develop` | `X.Y.Z-dev.N` | Manual | ❌ No |
-| Stabilization | `release/vX.Y.Z` | `X.Y.Z-rc.N` | Manual | ✅ Pre-release |
-| Production | `main` | `X.Y.Z` | Auto (push) | ✅ Stable |
-| Sync | (auto) | (auto) | Auto | (auto) |
+| Phase | Branch | Version | Trigger | GitHub Release | Service Images |
+|-------|--------|---------|---------|-----------------|---|
+| Development | `develop` | `X.Y.Z-dev.N` | Manual | ❌ No | ✅ Build & Push (with ENV) |
+| Stabilization | `release/vX.Y.Z` | `X.Y.Z-rc.N` | Manual | ✅ Pre-release | ✅ Build & Push RC (with ENV) |
+| Production | `main` | `X.Y.Z` | Auto (push) | ✅ Stable | ✅ Build & Push stable + latest (with ENV) |
+| Sync | (auto) | (auto) | Auto | (auto) | (auto) |
 
 For questions or issues, refer to [Troubleshooting](#troubleshooting) or check `.github/workflows/release.yml` for implementation details.

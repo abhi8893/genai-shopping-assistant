@@ -125,3 +125,6 @@ data/*
 
 # Keep example env files
 !**/.env.*example
+
+# Keep ci env files
+!**/.env.*ci

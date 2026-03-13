@@ -48,12 +48,23 @@ app-dev:
 
 app-prod:
 	set -a; \
-	. platform/app/.env; \
+	if [ "$(CI)" = "true" ]; then \
+		. platform/app/.env.ci; \
+	else \
+		. platform/app/.env; \
+	fi; \
 	set +a; \
-	docker compose \
-		-p app-prod \
-		-f $(APP_COMPOSE) \
-		up -d $(SERVICES_NORMALIZED)
+	if [ "$(BUILD_ONLY)" = "true" ]; then \
+		docker compose \
+			-p app-prod \
+			-f $(APP_COMPOSE) \
+			build $(SERVICES_NORMALIZED); \
+	else \
+		docker compose \
+			-p app-prod \
+			-f $(APP_COMPOSE) \
+			up -d $(SERVICES_NORMALIZED); \
+	fi
 
 local-run-dev:
 	make langfuse-dev
@@ -424,3 +435,6 @@ test-package:
 	make venv-create COMPONENT=packages/$(PACKAGE) GROUP=test MISSING_ONLY=true PRINT_SUMMARY=false
 	cd packages/$(PACKAGE) && source .venv-test/bin/activate && pytest -m "not ci"
 	
+
+slugify:
+	@echo "$(STR)" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+|-+$$//g'
