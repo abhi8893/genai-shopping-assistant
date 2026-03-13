@@ -243,7 +243,9 @@ jobs:
           
           # get branch name slug
           BRANCH_NAME=$(make slugify STR="${{ github.ref_name }}")
-          IMAGE_TAG="${BRANCH_NAME}-${{ github.sha}}"
+          SHORT_SHA=${{ github.sha }}
+          SHORT_SHA=${SHORT_SHA:0:7}
+          IMAGE_TAG="${BRANCH_NAME}-${SHORT_SHA}"
           echo "IMAGE_TAG=${IMAGE_TAG}" >> "$GITHUB_ENV"
 
           # Remove trailing slash from registry
