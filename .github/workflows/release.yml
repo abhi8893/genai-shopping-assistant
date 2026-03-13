@@ -56,7 +56,7 @@ jobs:
     runs-on: ubuntu-latest
 
     outputs:
-      upstream_workflow_run_id: ${{ steps.output_upstrean_workflow_run_info.outputs.upstream_workflow_run_id }}
+      upstream_workflow_run_id: ${{ steps.output_upstream_workflow_run_info.outputs.upstream_workflow_run_id }}
 
     steps:
       - name: Check if upstream workflow passed (main release)
@@ -119,7 +119,7 @@ jobs:
 
 
       - name: Output upstream workflow run info
-        id: output_upstrean_workflow_run_info
+        id: output_upstream_workflow_run_info
         run: |
           echo "upstream_workflow_run_status=${{ env.upstream_workflow_status }}" >> "$GITHUB_OUTPUT"
           echo "upstream_workflow_run_id=${{ env.upstream_workflow_run_id }}" >> "$GITHUB_OUTPUT"
