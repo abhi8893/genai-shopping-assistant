@@ -9,8 +9,8 @@ on:
 
 env:
   PYTHON_VERSION: "3.12"
-  PACKAGES_RUN_ALL_TESTS: "false"
-  SERVICES_BUILD_IMAGES: "false"
+  PACKAGES_RUN_ALL_TESTS: "true"
+  SERVICES_BUILD_IMAGES: "true"
 
 
 jobs:
