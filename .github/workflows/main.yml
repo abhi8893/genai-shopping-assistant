@@ -264,6 +264,7 @@ jobs:
       - name: Build Docker image
         run: |
           echo "Building Docker image for ${{ matrix.service }}"
+          export IMAGE_TAG="${{ env.IMAGE_PUSH_TAG }}"
           make app-prod CI=true SERVICES="${{ matrix.service }}"
 
       - name: Push Docker image
