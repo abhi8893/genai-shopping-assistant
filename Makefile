@@ -435,3 +435,6 @@ test-package:
 	make venv-create COMPONENT=packages/$(PACKAGE) GROUP=test MISSING_ONLY=true PRINT_SUMMARY=false
 	cd packages/$(PACKAGE) && source .venv-test/bin/activate && pytest -m "not ci"
 	
+
+slugify:
+	@echo "$(STR)" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+|-+$$//g'
