@@ -319,7 +319,7 @@ jobs:
           REGISTRY="${REGISTRY%/}"
 
           # get branch name slug
-          BRANCH_NAME=$(make slugify STR="${{ github.ref_name }}")
+          BRANCH_NAME=$(echo "${{ github.ref_name }}" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+|-+$$//g')
           SHORT_SHA=${{ github.sha }}
           SHORT_SHA=${SHORT_SHA:0:7}
           IMAGE_PULL_TAG="${BRANCH_NAME}-${SHORT_SHA}"
