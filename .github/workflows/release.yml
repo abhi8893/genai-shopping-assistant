@@ -282,7 +282,52 @@ jobs:
 
           echo "Running all tests"
           pytest
-  
+
+
+  retag_and_push_service_images:
+    name: Retag and Push Service Images
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [ecom-backend, shopping-assistant]
+    needs: [check_upstream_workflow, setup, validate, test_packages]
+    permissions:
+      contents: read
+      packages: write
+
+    env:
+      REGISTRY: ghcr.io/${{ github.repository }}/
+    steps:
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Set image URI
+        run: |
+          # Remove trailing slash from registry
+          REGISTRY="${{ env.REGISTRY }}"
+          REGISTRY="${REGISTRY%/}"
+          
+          echo "IMAGE_PULL_URI=${REGISTRY}/${{ matrix.service }}:latest" >> "$GITHUB_ENV"
+          echo "IMAGE_PUSH_URI=${REGISTRY}/${{ matrix.service }}:${{ needs.setup.outputs.tag_name }}" >> "$GITHUB_ENV"
+        
+      - name: Pull image
+        run: |
+          docker pull "${{ env.IMAGE_PULL_URI }}"
+      
+      - name: Retag and push
+        run: |
+          
+          # Retag image
+          docker tag "${{ env.IMAGE_PULL_URI }}" "${{ env.IMAGE_PUSH_URI }}"
+          
+          # Push image
+          docker push "${{ env.IMAGE_PUSH_URI }}"
+          
   tag_and_release:
     name: Tag and Release
     runs-on: ubuntu-latest
@@ -315,7 +360,7 @@ jobs:
           TAG="${{ needs.setup.outputs.tag_name }}"
           git tag "$TAG"
           git push origin "$TAG"
-          echo "✓ Tag $TAG created and pushed"
+          echo "✓ Tag $TAG created and pushed"          
 
       - name: Extract release notes from CHANGELOG
         id: release_notes
