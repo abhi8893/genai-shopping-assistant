@@ -243,7 +243,7 @@ jobs:
           
           # get branch name slug
           BRANCH_NAME=$(make slugify STR="${{ github.ref_name }}")
-          IMAGE_TAG="${BRANCH_NAME}"
+          IMAGE_TAG="${BRANCH_NAME}-${{ github.sha}}"
           echo "IMAGE_TAG=${IMAGE_TAG}" >> "$GITHUB_ENV"
 
           # Remove trailing slash from registry
@@ -266,9 +266,14 @@ jobs:
         run: |
           echo "Pushing Docker image for ${{ matrix.service }}"
           docker push "${{ env.IMAGE_URI }}"
-      
-      
-  
+
+
+      - name: Unit tests
+        run: |
+          echo "Running unit tests for ${{ matrix.service }}"
+          docker run --rm "${{ env.IMAGE_URI }}" \
+            sh -c "uv pip install --system . --group test && uv run pytest tests/unit"
+          
   final_status:
     runs-on: ubuntu-latest
     needs: [test_packages, build_services]
