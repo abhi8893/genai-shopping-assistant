@@ -216,24 +216,37 @@ jobs:
 
   build_services:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    
     strategy:
       matrix:
         service: [ecom-backend, shopping-assistant]
     env:
       REGISTRY: ghcr.io/${{ github.repository_owner }}/${{ github.repository }}/
       IMAGE_TAG: ${{ github.ref_name }}
+      DOCKER_BUILDKIT: 1
+      COMPOSE_DOCKER_CLI_BUILD: 1
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
-      - name: Set image name
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set image uri
         run: |
-          echo "IMAGE_NAME=${{ env.REGISTRY }}/${{ matrix.service }}:${{ env.IMAGE_TAG }}" >> "$GITHUB_ENV"
+          echo "IMAGE_URI=${{ env.REGISTRY }}/${{ matrix.service }}:${{ env.IMAGE_TAG }}" >> "$GITHUB_ENV"
 
       - name: Pull latest image
         run: |
           echo "Pulling latest image for ${{ matrix.service }}"
-          docker pull "${{ env.IMAGE_NAME }}"
+          docker pull "${{ env.IMAGE_URI }}" || true
 
       - name: Build Docker image
         run: |
@@ -243,7 +256,7 @@ jobs:
       - name: Push Docker image
         run: |
           echo "Pushing Docker image for ${{ matrix.service }}"
-          docker push "${{ env.IMAGE_NAME }}"
+          docker push "${{ env.IMAGE_URI }}"
       
       
   
