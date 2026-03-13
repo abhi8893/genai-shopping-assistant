@@ -224,7 +224,7 @@ jobs:
       matrix:
         service: [ecom-backend, shopping-assistant]
     env:
-      REGISTRY: ghcr.io/${{ github.repository_owner }}/${{ github.repository }}/
+      REGISTRY: ghcr.io/${{ github.repository }}/
       DOCKER_BUILDKIT: 1
       COMPOSE_DOCKER_CLI_BUILD: 1
     steps:
