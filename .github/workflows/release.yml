@@ -317,9 +317,16 @@ jobs:
           # Remove trailing slash from registry
           REGISTRY="${{ env.REGISTRY }}"
           REGISTRY="${REGISTRY%/}"
+
+          # get branch name slug
+          BRANCH_NAME=$(make slugify STR="${{ github.ref_name }}")
+          SHORT_SHA=${{ github.sha }}
+          SHORT_SHA=${SHORT_SHA:0:7}
+          IMAGE_PULL_TAG="${BRANCH_NAME}-${SHORT_SHA}"
+          IMAGE_PUSH_TAG="${{ needs.setup.outputs.tag_name }}"
           
-          echo "IMAGE_PULL_URI=${REGISTRY}/${{ matrix.service }}:latest" >> "$GITHUB_ENV"
-          echo "IMAGE_PUSH_URI=${REGISTRY}/${{ matrix.service }}:${{ needs.setup.outputs.tag_name }}" >> "$GITHUB_ENV"
+          echo "IMAGE_PULL_URI=${REGISTRY}/${{ matrix.service }}:${IMAGE_PULL_TAG}" >> "$GITHUB_ENV"
+          echo "IMAGE_PUSH_URI=${REGISTRY}/${{ matrix.service }}:${IMAGE_PUSH_TAG}" >> "$GITHUB_ENV"
         
       - name: Pull image
         run: |

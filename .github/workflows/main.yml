@@ -245,19 +245,21 @@ jobs:
           BRANCH_NAME=$(make slugify STR="${{ github.ref_name }}")
           SHORT_SHA=${{ github.sha }}
           SHORT_SHA=${SHORT_SHA:0:7}
-          IMAGE_TAG="${BRANCH_NAME}-${SHORT_SHA}"
-          echo "IMAGE_TAG=${IMAGE_TAG}" >> "$GITHUB_ENV"
+          IMAGE_CACHE_TAG="${BRANCH_NAME}-latest"
+          IMAGE_PUSH_TAG="${BRANCH_NAME}-${SHORT_SHA}"
+          echo "IMAGE_PUSH_TAG=${IMAGE_PUSH_TAG}" >> "$GITHUB_ENV"
 
           # Remove trailing slash from registry
           REGISTRY="${{ env.REGISTRY }}"
           REGISTRY="${REGISTRY%/}"
           
-          echo "IMAGE_URI=${REGISTRY}/${{ matrix.service }}:${IMAGE_TAG}" >> "$GITHUB_ENV"
+          echo "IMAGE_CACHE_URI=${REGISTRY}/${{ matrix.service }}:${IMAGE_CACHE_TAG}" >> "$GITHUB_ENV"
+          echo "IMAGE_PUSH_URI=${REGISTRY}/${{ matrix.service }}:${IMAGE_PUSH_TAG}" >> "$GITHUB_ENV"
 
       - name: Pull latest image
         run: |
           echo "Pulling latest image for ${{ matrix.service }}"
-          docker pull "${{ env.IMAGE_URI }}" || true
+          docker pull "${{ env.IMAGE_CACHE_URI }}" || true
 
       - name: Build Docker image
         run: |
@@ -267,14 +269,21 @@ jobs:
       - name: Push Docker image
         run: |
           echo "Pushing Docker image for ${{ matrix.service }}"
-          docker push "${{ env.IMAGE_URI }}"
-
-
+          docker push "${{ env.IMAGE_PUSH_URI }}"
+      
       - name: Unit tests
         run: |
           echo "Running unit tests for ${{ matrix.service }}"
-          docker run --rm "${{ env.IMAGE_URI }}" \
+          docker run --rm "${{ env.IMAGE_PUSH_URI }}" \
             sh -c "uv pip install --system . --group test && uv run pytest tests/unit"
+
+      - name: Retag and push cache image
+        run: |
+          echo "Retagging and pushing cache image for ${{ matrix.service }}"
+          docker tag "${{ env.IMAGE_PUSH_URI }}" "${{ env.IMAGE_CACHE_URI }}"
+          docker push "${{ env.IMAGE_CACHE_URI }}"
+
+
           
   final_status:
     runs-on: ubuntu-latest
