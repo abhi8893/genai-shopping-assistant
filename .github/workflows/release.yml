@@ -56,7 +56,7 @@ jobs:
     runs-on: ubuntu-latest
 
     outputs:
-      upstream_workflow_run_id: ${{ steps.final_check_upstream.outputs.upstream_workflow_run_id }}
+      upstream_workflow_run_id: ${{ steps.output_upstrean_workflow_run_info.outputs.upstream_workflow_run_id }}
 
     steps:
       - name: Check if upstream workflow passed (main release)
@@ -69,11 +69,17 @@ jobs:
             STATUS="running"
           fi
 
+          # if not successful, fail the workflow
+          if [ "$STATUS" != "success" ]; then
+            echo "Upstream workflow is not successful, failing release"
+            exit 1
+          fi
+
           echo "upstream_workflow_status=$STATUS" >> "$GITHUB_ENV"
           echo "upstream_workflow_run_id=${{ github.event.workflow_run.id }}" >> "$GITHUB_ENV"
       
       - name: Check if upstream workflow passed (manual trigger)
-        if: (github.event_name == 'workflow_dispatch') && (github.event.inputs.check_upstream_workflow == 'TRUE')
+        if: (github.event_name == 'workflow_dispatch')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -95,27 +101,27 @@ jobs:
             STATUS="running"
           fi
 
+          # if still running, fail the workflow
+          if [ "$STATUS" = "running" ]; then
+            echo "Upstream workflow is still running, failing release"
+            exit 1
+          fi
+
+          # if check_upstream_workflow is TRUE and upstream workflow is not successful, skip release
+          if [ "${{ github.event.inputs.check_upstream_workflow }}" = "TRUE" ] && [ "$STATUS" != "success" ]; then
+            echo "Upstream workflow is not successful, skipping release"
+            exit 0
+          fi
+
+
           echo "upstream_workflow_status=$STATUS" >> "$GITHUB_ENV"
           echo "upstream_workflow_run_id=$RUN_ID" >> "$GITHUB_ENV"
 
-      - name: Skip release if upstream is not successful
-        id: final_check_upstream
-        if: ((github.event_name == 'workflow_dispatch') && (github.event.inputs.check_upstream_workflow == 'TRUE')) || (github.event_name == 'workflow_run')
+
+      - name: Output upstream workflow run info
+        id: output_upstrean_workflow_run_info
         run: |
-
-          STATUS="${{ env.upstream_workflow_status }}"
-          echo "Upstream workflow status: $STATUS"
-
-          if [ "$STATUS" = "running" ]; then
-            echo "Upstream workflow is still running, re-trigger after it succeeds"
-            exit 1
-          fi
-          
-          if [ "$STATUS" != "success" ]; then
-            echo "Upstream workflow failed, skipping release"
-            exit 1
-          fi
-
+          echo "upstream_workflow_run_status=${{ env.upstream_workflow_status }}" >> "$GITHUB_OUTPUT"
           echo "upstream_workflow_run_id=${{ env.upstream_workflow_run_id }}" >> "$GITHUB_OUTPUT"
   setup:
     name: Setup Release Info
