@@ -48,12 +48,23 @@ app-dev:
 
 app-prod:
 	set -a; \
-	. platform/app/.env; \
+	if [ "$(CI)" = "true" ]; then \
+		. platform/app/.env.ci; \
+	else \
+		. platform/app/.env; \
+	fi; \
 	set +a; \
-	docker compose \
-		-p app-prod \
-		-f $(APP_COMPOSE) \
-		up -d $(SERVICES_NORMALIZED)
+	if [ "$(BUILD_ONLY)" = "true" ]; then \
+		docker compose \
+			-p app-prod \
+			-f $(APP_COMPOSE) \
+			build $(SERVICES_NORMALIZED); \
+	else \
+		docker compose \
+			-p app-prod \
+			-f $(APP_COMPOSE) \
+			up -d $(SERVICES_NORMALIZED); \
+	fi
 
 local-run-dev:
 	make langfuse-dev
