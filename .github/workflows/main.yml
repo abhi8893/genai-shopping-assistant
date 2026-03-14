@@ -319,11 +319,29 @@ jobs:
           docker run --rm "${{ env.IMAGE_PUSH_URI }}" \
             sh -c "uv pip install --system . --group test && uv run pytest tests/unit"
 
+      - name: Health check
+        run: |
+
+          # Start the service
+          make app-prod CI=true SERVICES="${{ matrix.service }}"
+
+          start=$(date +%s)
+          until curl -s http://localhost:8000/health > /dev/null 2>&1; do
+            now=$(date +%s)
+            if [ "$((now - start))" -gt 60 ]; then
+              echo "Timeout waiting for health check"
+              exit 1
+            fi
+            echo "Waiting for health check..."
+            sleep 0.1
+          done
+
+          echo "Health check passed"
+
       - name: API tests
         if: matrix.service == 'ecom-backend'
         run: |
           echo "Running API tests for ${{ matrix.service }}"
-          make app-prod CI=true SERVICES="${{ matrix.service }}"
           bash services/ecom-backend/tests/api/test_users_api.sh
 
       - name: Retag and push cache image
