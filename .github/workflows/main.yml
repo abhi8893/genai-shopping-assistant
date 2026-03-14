@@ -321,6 +321,9 @@ jobs:
 
       - name: Set environment variables
         run: |
+
+          source platform/app/.env.ci
+          
           if [ "${{ matrix.service }}" == "ecom-backend" ]; then
             echo "MAIN_SERVICE_PORT=${ECOM_API_PORT}" >> "$GITHUB_ENV"
 
