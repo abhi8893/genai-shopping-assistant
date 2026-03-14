@@ -1,8 +1,23 @@
-#!/usr/bin/env bash
 # Explore the Users API endpoints
 # Prerequisites: ecom-backend service running on http://localhost:${ECOM_API_PORT}
 
-BASE_URL="http://localhost:${ECOM_API_PORT}/api/v1"
+# get port from 1st argument
+PORT="$1"
+
+# fallback to ECOM_API_PORT if not specified
+if [ -z "$PORT" ] && [ -n "$ECOM_API_PORT" ]; then
+  PORT="$ECOM_API_PORT"
+fi
+
+# raise error if port is still empty
+if [ -z "$PORT" ]; then
+  echo "Error: Port not specified. Please provide port as first argument or set ECOM_API_PORT environment variable."
+  exit 1
+fi
+
+echo "Using port: ${PORT}"
+
+BASE_URL="http://localhost:${PORT}/api/v1"
 
 echo "============================================"
 echo " GET /users/ — List all users (paginated)"
