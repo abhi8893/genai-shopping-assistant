@@ -356,7 +356,7 @@ jobs:
         if: matrix.service == 'ecom-backend'
         run: |
           echo "Running API tests for ${{ matrix.service }}"
-          bash services/ecom-backend/tests/api/test_users_api.sh
+          bash services/ecom-backend/tests/api/test_users_api.sh "${MAIN_SERVICE_PORT}"
 
       - name: Retag and push cache image
         run: |
