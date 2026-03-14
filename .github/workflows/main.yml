@@ -319,6 +319,15 @@ jobs:
           docker run --rm "${{ env.IMAGE_PUSH_URI }}" \
             sh -c "uv pip install --system . --group test && uv run pytest tests/unit"
 
+      - name: Set environment variables
+        run: |
+          if [ "${{ matrix.service }}" == "ecom-backend" ]; then
+            echo "MAIN_SERVICE_PORT=${ECOM_API_PORT}" >> "$GITHUB_ENV"
+
+          elif [ "${{ matrix.service }}" == "shopping-assistant" ]; then
+            echo "MAIN_SERVICE_PORT=${SHOPPING_ASSISTANT_PORT}" >> "$GITHUB_ENV"
+          fi
+
       - name: Health check
         run: |
 
@@ -326,7 +335,7 @@ jobs:
           make app-prod CI=true SERVICES="${{ matrix.service }}"
 
           start=$(date +%s)
-          until curl -s http://localhost:8000/health > /dev/null 2>&1; do
+          until curl -s "http://localhost:${MAIN_SERVICE_PORT}/health" > /dev/null 2>&1; do
             now=$(date +%s)
             if [ "$((now - start))" -gt 60 ]; then
               echo "Timeout waiting for health check"

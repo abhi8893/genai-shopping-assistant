@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Explore the Users API endpoints
-# Prerequisites: ecom-backend service running on http://localhost:8000
+# Prerequisites: ecom-backend service running on http://localhost:${ECOM_API_PORT}
 
-BASE_URL="http://localhost:8000/api/v1"
+BASE_URL="http://localhost:${ECOM_API_PORT}/api/v1"
 
 echo "============================================"
 echo " GET /users/ — List all users (paginated)"
