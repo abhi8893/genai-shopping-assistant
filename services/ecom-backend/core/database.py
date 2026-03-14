@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker
 
 from core.config import settings
 
-DATABASE_URL = f"sqlite:///{settings.db_name}.db"
+DATABASE_URL = f"sqlite:///data/{settings.db_name}.db"
 engine = create_engine(DATABASE_URL)
 Base = declarative_base()
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
