@@ -58,12 +58,12 @@ app-prod:
 		docker compose \
 			-p app-prod \
 			-f $(APP_COMPOSE) \
-			build --pull always $(SERVICES_NORMALIZED); \
+			build --pull missing $(SERVICES_NORMALIZED); \
 	else \
 		docker compose \
 			-p app-prod \
 			-f $(APP_COMPOSE) \
-			up -d --pull always $(SERVICES_NORMALIZED); \
+			up -d --pull missing $(SERVICES_NORMALIZED); \
 	fi
 
 local-run-dev:
