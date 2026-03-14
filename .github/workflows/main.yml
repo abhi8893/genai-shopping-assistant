@@ -285,14 +285,18 @@ jobs:
           SHORT_SHA=${SHORT_SHA:0:7}
           IMAGE_CACHE_TAG="${BRANCH_NAME}-latest"
           IMAGE_PUSH_TAG="${BRANCH_NAME}-${SHORT_SHA}"
-          echo "IMAGE_PUSH_TAG=${IMAGE_PUSH_TAG}" >> "$GITHUB_ENV"
+          
 
           # Remove trailing slash from registry
           REGISTRY="${{ env.REGISTRY }}"
           REGISTRY="${REGISTRY%/}"
           
-          echo "IMAGE_CACHE_URI=${REGISTRY}/${{ matrix.service }}:${IMAGE_CACHE_TAG}" >> "$GITHUB_ENV"
-          echo "IMAGE_PUSH_URI=${REGISTRY}/${{ matrix.service }}:${IMAGE_PUSH_TAG}" >> "$GITHUB_ENV"
+          {
+            echo "IMAGE_CACHE_URI=${REGISTRY}/${{ matrix.service }}:${IMAGE_CACHE_TAG}"
+            echo "IMAGE_PUSH_URI=${REGISTRY}/${{ matrix.service }}:${IMAGE_PUSH_TAG}"
+            echo "IMAGE_PUSH_TAG=${IMAGE_PUSH_TAG}"
+            echo "IMAGE_TAG=${IMAGE_PUSH_TAG}"
+          } >> "$GITHUB_ENV"
 
       - name: Pull latest image
         run: |
@@ -302,7 +306,6 @@ jobs:
       - name: Build Docker image
         run: |
           echo "Building Docker image for ${{ matrix.service }}"
-          export IMAGE_TAG="${{ env.IMAGE_PUSH_TAG }}"
           make app-prod CI=true SERVICES="${{ matrix.service }}"
 
       - name: Push Docker image
