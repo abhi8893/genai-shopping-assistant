@@ -3,6 +3,7 @@ import click
 from project.commands.components import components_cli
 from project.commands.direnv import direnv_cli
 from project.commands.venv import venv_cli
+from project.commands.version import version_cli
 
 
 @click.group()
@@ -14,6 +15,7 @@ def main():
 main.add_command(venv_cli)
 main.add_command(direnv_cli)
 main.add_command(components_cli)
+main.add_command(version_cli)
 
 if __name__ == "__main__":
     main()

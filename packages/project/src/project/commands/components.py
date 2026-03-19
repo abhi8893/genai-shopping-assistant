@@ -1,12 +1,7 @@
-from pathlib import Path
-
 import click
 
 from project.core.components import list_components
-
-
-def get_repo_root() -> Path:
-    return Path.cwd()
+from project.core.utils import get_repo_root
 
 
 @click.group(name="components")

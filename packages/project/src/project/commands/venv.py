@@ -3,6 +3,7 @@ from pathlib import Path
 import click
 
 from project.core.components import list_components
+from project.core.utils import get_repo_root
 from project.core.venv import (
     Status,
     StatusCode,
@@ -17,11 +18,6 @@ from project.core.venv import (
     unswitch_venv,
     venv_exists,
 )
-
-
-def get_repo_root() -> Path:
-    """Find the repo root by assuming the cwd is inside the monorepo."""
-    return Path.cwd()
 
 
 def get_target_components(
