@@ -128,6 +128,19 @@ remove-dangling-images:
 # Virtual Environment Management
 # ========================================
 
+.PHONY: setup-project-cli
+setup-project-cli:
+	@echo "Setting up root virtual environment for project CLI..."
+	@uv venv --clear --python $(PYTHON_VERSION) /tmp/.venv-temp
+	@uv pip install --python /tmp/.venv-temp -e packages/project
+	@. /tmp/.venv-temp/bin/activate && project venv create --overwrite root --group dev
+	@echo "✓ Project CLI installed in root .venv"
+	@rm -rf /tmp/.venv-temp
+	@. .venv-dev/bin/activate && project venv switch root --target dev
+
+	@echo ""
+	@echo "Run 'source .venv/bin/activate' to use 'project' commands natively"
+
 .PHONY: venv-create
 venv-create:
 ifndef COMPONENT

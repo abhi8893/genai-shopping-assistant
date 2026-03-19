@@ -1,0 +1,16 @@
+[project]
+name = "project"
+version = "0.1.0"
+description = "Monorepo CLI scripts and tools"
+requires-python = ">=3.12"
+dependencies = ["click>=8.1.7"]
+
+[project.scripts]
+project = "project.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = ["pytest>=8.0.0"]
