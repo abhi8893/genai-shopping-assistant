@@ -43,10 +43,15 @@ jobs:
       - name: Set up Python
         run: uv python install "${{ needs.setup.outputs.PYTHON_VERSION }}"
 
+      - name: Setup project cli
+        run: |
+          make setup-project-cli
+
       - name: Setup code quality env
         run: |
-          make venv-create COMPONENT=root GROUP=ci
-          make venv-switch COMPONENT=root TARGET=ci
+          source .venv/bin/activate
+          project venv create root --group ci
+          project venv switch root --target ci
           
 
       - name: Run code quality checks
@@ -73,16 +78,21 @@ jobs:
       - name: Set up Python
         run: uv python install "${{ needs.setup.outputs.PYTHON_VERSION }}"
 
+      - name: Setup project cli
+        run: |
+          make setup-project-cli
+
       - name: Setup virtual environment
         run: |
-          make venv-create COMPONENT=root GROUP=ci
-          make venv-switch COMPONENT=root TARGET=ci
+          source .venv/bin/activate
+          project venv create root --group ci
+          project venv switch root --target ci
 
       - name: Validate version is greater than highest tag
         id: version_check
         run: |
           source .venv/bin/activate
-          VERSION_OUTPUT=$(python3 scripts/ci/get_version.py --repo-root "${{ github.workspace }}")
+          VERSION_OUTPUT=$(project version get)
           VERSION=$(echo "$VERSION_OUTPUT" | grep "^VERSION:" | cut -d' ' -f2)
 
           echo "Current version: $VERSION"
@@ -94,7 +104,7 @@ jobs:
             LATEST_VERSION="${LATEST_TAG#v}"
             echo "Latest tag: $LATEST_TAG (version: $LATEST_VERSION)"
 
-            uv run scripts/ci/compare_versions.py "$VERSION" "$LATEST_VERSION"
+            project version compare "$VERSION" "$LATEST_VERSION"
           fi
 
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
@@ -167,10 +177,15 @@ jobs:
           name: ${{ matrix.package }}-${{ needs.validate_version.outputs.version }}
           path: dist/
 
+      - name: Setup project cli
+        run: |
+          make setup-project-cli
+
       - name: Setup test environment
         run: |
-          make venv-create COMPONENT="packages/${{ matrix.package }}" GROUP=test
-          make venv-switch COMPONENT="packages/${{ matrix.package }}" TARGET=test
+          source .venv/bin/activate
+          project venv create "packages/${{ matrix.package }}" --group test
+          project venv switch "packages/${{ matrix.package }}" --target test
 
       - name: Test package (wheel)
         env:

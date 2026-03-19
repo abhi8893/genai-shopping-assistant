@@ -141,10 +141,15 @@ jobs:
       - name: Set up Python
         run: uv python install "${{ env.PYTHON_VERSION }}"
 
+      - name: Setup project cli
+        run: |
+          make setup-project-cli
+
       - name: Setup virtual environment
         run: |
-          make venv-create COMPONENT=root GROUP=ci
-          make venv-switch COMPONENT=root TARGET=ci
+          source .venv/bin/activate
+          project venv create root --group ci
+          project venv switch root --target ci
 
       - name: Determine release type, validate version format, and compute tag
         id: release_info
@@ -153,10 +158,13 @@ jobs:
           source .venv/bin/activate
 
           BRANCH="${{ github.ref_name }}"
-          REPO_ROOT="${{ github.workspace }}"
           TEST_RELEASE="${{ github.event.inputs.test_release }}"
 
-          OUTPUT=$(bash scripts/ci/determine_release_info.sh "$BRANCH" "$REPO_ROOT" "$TEST_RELEASE")
+          if [ "${{ github.event.inputs.test_release }}" = "TRUE" ]; then
+            OUTPUT=$(project version release-info "$BRANCH" --test-release)
+          else
+            OUTPUT=$(project version release-info "$BRANCH")
+          fi
 
           VERSION=$(echo "$OUTPUT" | grep '^VERSION=' | cut -d= -f2-)
           TAG_NAME=$(echo "$OUTPUT" | grep '^TAG_NAME=' | cut -d= -f2-)
@@ -196,6 +204,10 @@ jobs:
       - name: Set up Python
         run: uv python install "${{ env.PYTHON_VERSION }}"
 
+      - name: Setup project cli
+        run: |
+          make setup-project-cli
+
       - name: Check tag doesn't already exist
         run: |
           TAG="${{ needs.setup.outputs.tag_name }}"
@@ -207,6 +219,7 @@ jobs:
 
       - name: Validate version is greater than latest
         run: |
+          source .venv/bin/activate
           VERSION="${{ needs.setup.outputs.version }}"
           LATEST_TAG=$(git tag -l 'v[0-9]*' | sort -V | tail -n 1)
           if [ -z "$LATEST_TAG" ]; then
@@ -214,7 +227,7 @@ jobs:
           else
             LATEST_VERSION="${LATEST_TAG#v}"
             echo "Latest tag: $LATEST_TAG"
-            uv run scripts/ci/compare_versions.py "$VERSION" "$LATEST_VERSION"
+            project version compare "$VERSION" "$LATEST_VERSION"
           fi
 
       - name: Validate CHANGELOG entry (rc and stable)
@@ -246,10 +259,15 @@ jobs:
       - name: Set up Python
         run: uv python install "${{ env.PYTHON_VERSION }}"
 
+      - name: Setup project cli
+        run: |
+          make setup-project-cli
+
       - name: Setup test environment
         run: |
-          make venv-create COMPONENT="packages/${{ matrix.package }}" GROUP=test
-          make venv-switch COMPONENT="packages/${{ matrix.package }}" TARGET=test
+          source .venv/bin/activate
+          project venv create "packages/${{ matrix.package }}" --group test
+          project venv switch "packages/${{ matrix.package }}" --target test
 
       - name: Download package
         uses: actions/download-artifact@v4

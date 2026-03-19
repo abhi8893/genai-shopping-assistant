@@ -279,7 +279,7 @@ def show():
     "--all", "all_flag", is_flag=True, help="Build lockfiles for all components"
 )
 @click.option(
-    "--build-mode", default="linux/amd64", type=click.Choice(["local", "linux/amd64"])
+    "--build-mode", default="local", type=click.Choice(["local", "linux/amd64"])
 )
 def lockfile(component: str | None, all_flag: bool, build_mode: str):
     """Build uv lockfiles for monorepo component(s)."""
