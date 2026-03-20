@@ -20,8 +20,14 @@ jobs:
 
     - uses: astral-sh/setup-uv@803947b9bd8e9f986429fa0c5a41c367cd732b41 # 7.2.1
 
+    - name: Setup project cli
+      run: |
+        make setup-project-cli
+
     - name: Upgrade dependencies in the lock file with uv
-      run: make venv-lockfile-all
+      run: |
+        source .venv/bin/activate
+        project venv lockfile --all
 
     - name: Format PR title
       id: format-title

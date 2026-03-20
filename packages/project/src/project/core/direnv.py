@@ -1,13 +1,5 @@
-#!/usr/bin/env python3
-"""Generate .envrc files for direnv auto-activation with custom venv prompt names."""
-
-import argparse
 import subprocess
-import sys
 from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).parent))
-from list_components import list_components
 
 ENVRC_TEMPLATE = """\
 if [ -d ".venv" ]; then
@@ -33,24 +25,17 @@ def write_envrc(path: Path, content: str) -> None:
     subprocess.run(["direnv", "allow"], cwd=str(path), check=True, capture_output=True)
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="Generate .envrc files for direnv auto-activation"
-    )
-    parser.add_argument("--repo-root", required=True, help="Repository root directory")
-    args = parser.parse_args()
-
-    repo_root = Path(args.repo_root)
+def setup_direnv(repo_root: Path, components: list[str]) -> list[str]:
+    """Setup .envrc files for all components."""
+    results = []
 
     write_envrc(repo_root, ROOT_ENVRC)
-    print("  ✓ . (root)")
+    results.append("root")
 
-    for component in list_components(repo_root):
+    for component in components:
+        if component == "root":
+            continue
         write_envrc(repo_root / component, ENVRC_TEMPLATE.format(component=component))
-        print(f"  ✓ {component}")
+        results.append(component)
 
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())
+    return results

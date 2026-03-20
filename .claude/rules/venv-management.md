@@ -1,6 +1,23 @@
 ## Virtual Environment Management
 
-The monorepo uses a standardized virtual environment management system with Make targets. All components use `pyproject.toml` with PEP 735 dependency groups.
+The monorepo uses a standardized virtual environment management system via the `project` CLI (located at `packages/project`). All components use `pyproject.toml` with PEP 735 dependency groups.
+
+### Quick Start: Activate the Project CLI
+
+The `project` CLI commands are the primary interface for venv management. Initialize it once per session:
+
+```bash
+# Bootstrap the CLI into the root .venv (one-time per session)
+make setup-project-cli
+
+# Activate the CLI in your current shell
+source .venv/bin/activate
+
+# Verify the CLI is available
+project venv show
+```
+
+After activation, use `project venv *` commands directly. The old `make venv-*` targets are deprecated and should not be used.
 
 ### Key Concepts
 
@@ -32,17 +49,21 @@ Each component has a `.info.json` file with `venv` key that tracks:
 **Create venv for a single component**:
 ```bash
 # Create root dev venv (editable install)
-make venv-create COMPONENT=root GROUP=dev
+project venv create root --group dev
 
 # Create dev venv (editable install)
-make venv-create COMPONENT=packages/shopping-assistant GROUP=dev
+project venv create packages/shopping-assistant --group dev
 
 # Create prod venv (non-editable install)
-make venv-create COMPONENT=services/ecom-backend GROUP=prod
+project venv create services/ecom-backend --group prod
 
 # Create custom group venv
-make venv-create COMPONENT=services/shopping-assistant GROUP=test
+project venv create services/shopping-assistant --group test
 ```
+
+**Flags for venv creation**:
+- `--missing-only`: Skip components that already have the venv (useful for batch creation)
+- `--overwrite`: Remove existing venv and recreate it (forces clean install)
 
 **Special: Root project venvs**:
 The special component identifier `"root"` refers to the repository root itself:
@@ -54,44 +75,45 @@ The special component identifier `"root"` refers to the repository root itself:
 **Create venvs for all components at once**:
 ```bash
 # Create dev venvs for all components (including root)
-make venv-create-all GROUP=dev
+project venv create --all --group dev
 
 # Create prod venvs for all components (including root)
-make venv-create-all GROUP=prod
+project venv create --all --group prod
 ```
 
-**Note**: `venv-create-all` processes all components in order: `root` first, then packages and services. Root is always the first component in the list.
+**Note**: When using `--all`, components are processed in order: `root` first, then packages and services. Root is always the first component in the list.
 
 **What happens during creation**:
 1. Creates `.venv-{group}` directory using `uv venv --python 3.12`
 2. Installs dependencies based on group (editable for dev, non-editable otherwise)
 3. For dev mode: reinstalls path-based dependencies (from `tool.uv.sources`) in editable mode
 4. Updates `.info.json` with new venv in `options` array
+5. Includes self-healing automation to prevent active `.venv-*` duplications when using `--overwrite`
 
 ### Cleaning Virtual Environments
 
 **Clean specific venv**:
 ```bash
 # Clean only dev venv
-make venv-clean COMPONENT=packages/shopping-assistant GROUP=dev
+project venv clean packages/shopping-assistant --group dev
 
 # Clean only prod venv
-make venv-clean COMPONENT=services/ecom-backend GROUP=prod
+project venv clean services/ecom-backend --group prod
 ```
 
 **Clean all venvs in a component**:
 ```bash
 # Removes all .venv* directories (including .venv if present)
-make venv-clean COMPONENT=packages/shopping-assistant
+project venv clean packages/shopping-assistant
 ```
 
 **Clean all components**:
 ```bash
 # Clean all venvs in all components
-make venv-clean-all
+project venv clean --all
 
 # Clean specific group across all components
-make venv-clean-all GROUP=dev
+project venv clean --all --group dev
 ```
 
 **What happens during cleaning**:
@@ -111,10 +133,10 @@ The script checks `.info.json` to find the active venv and cleans it properly, t
 **Switch to a different venv**:
 ```bash
 # Switch to dev venv
-make venv-switch COMPONENT=services/shopping-assistant TARGET=dev
+project venv switch services/shopping-assistant --target dev
 
 # Switch to prod venv
-make venv-switch COMPONENT=packages/shopping-assistant TARGET=prod
+project venv switch packages/shopping-assistant --target prod
 ```
 
 **How switching works**:
@@ -131,13 +153,13 @@ make venv-switch COMPONENT=packages/shopping-assistant TARGET=prod
 **Unswitch a specific component** (reverse a `venv-switch`):
 ```bash
 # Reverse the switch - renames .venv back to .venv-{active}
-make venv-unswitch COMPONENT=packages/shopping-assistant
+project venv unswitch packages/shopping-assistant
 ```
 
 **Unswitch all components at once**:
 ```bash
 # Reverse all switches across all components
-make venv-unswitch-all
+project venv unswitch --all
 ```
 
 **How unswitching works**:
@@ -184,46 +206,39 @@ deactivate
 ### Repairing VIRTUAL_ENV References
 
 When a venv is renamed (e.g. `.venv-dev` → `.venv`), the activate scripts inside `bin/`
-still contain hardcoded paths to the old directory name. `venv-switch` repairs these
-automatically, but the targets below allow ad-hoc repairs if needed.
+still contain hardcoded paths to the old directory name. `project venv switch` repairs these
+automatically, but the command below allows ad-hoc repairs if needed.
 
 **Repair active `.venv` for a single component**:
 ```bash
-make venv-repair-refs COMPONENT=packages/shopping-assistant
+project venv repair-refs packages/shopping-assistant
 ```
 
 **Repair a specific non-active venv**:
 ```bash
-make venv-repair-refs COMPONENT=packages/shopping-assistant TARGET=dev
+project venv repair-refs packages/shopping-assistant --target dev
 ```
 
-**Repair all components** (optional `TARGET` works here too):
+**Repair all components** (optional `--target` works here too):
 ```bash
-make venv-repair-refs-all
-make venv-repair-refs-all TARGET=prod
+project venv repair-refs --all
+project venv repair-refs --all --target prod
 ```
 
-**Dry-run to inspect without writing**:
-```bash
-python3 scripts/repair_venv_references.py \
-  --venv-dir packages/shopping-assistant [--target dev] --dry-run
-```
-
-The underlying script is `scripts/repair_venv_references.py` and is also importable
-as a module (`from repair_venv_references import repair_venv_references`).
+The `repair-refs` command updates `VIRTUAL_ENV=` paths in activation scripts to match current directory names.
 
 ### Refreshing .info.json
 
 **Refresh and validate .info.json**:
 ```bash
 # Refresh single component
-make venv-refresh COMPONENT=packages/shopping-assistant
+project venv refresh packages/shopping-assistant
 
 # Auto-fix invalid active field
-make venv-refresh COMPONENT=packages/shopping-assistant FIX_ACTIVE=true
+project venv refresh packages/shopping-assistant --fix
 
 # Refresh all components
-make venv-refresh-all
+project venv refresh --all
 ```
 
 **Validation rules**:
@@ -278,20 +293,16 @@ shopping-assistant = { path = "../../packages/shopping-assistant" }
 
 ### Python Version Pinning
 
-`.python-version` files are managed via `uv python pin` and exist at the repo root and in each component directory. `PYTHON_VERSION` defaults to `3.12` (matching `.github/workflows/main.yml`).
+`.python-version` files are managed via `uv python pin` and exist at the repo root and in each component directory. The default is `3.12` (matching `.github/workflows/main.yml`).
+
+Currently, Python version pinning is managed directly with `uv`:
 
 ```bash
-# Pin repo root (no COMPONENT)
-make venv-pin-python
+# Pin Python version at repo root
+uv python pin 3.12
 
-# Pin a single component
-make venv-pin-python COMPONENT=packages/shopping-assistant
-
-# Pin root + all components
-make venv-pin-python-all
-
-# Override Python version
-make venv-pin-python-all PYTHON_VERSION=3.13
+# Pin Python version in a component
+cd packages/shopping-assistant && uv python pin 3.12
 ```
 
 ### Root Project Venv
@@ -308,10 +319,10 @@ dev = [
 **Create and use root dev venv**:
 ```bash
 # Create root dev venv with pre-commit and dependencies
-make venv-create COMPONENT=root GROUP=dev
+project venv create root --group dev
 
 # Switch to root dev venv
-make venv-switch COMPONENT=root TARGET=dev
+project venv switch root --target dev
 
 # Activate the root venv
 source .venv/bin/activate
@@ -325,59 +336,64 @@ pre-commit --version
 - Run root-level scripts and utilities
 - Create isolated root environment for container builds
 - Pin development tools independent of component venvs
+- Bootstrap the `project` CLI itself via `make setup-project-cli`
 
 ### Common Venv Workflows
 
 **Setting up a new development environment**:
 ```bash
+# Bootstrap the project CLI (one-time)
+make setup-project-cli
+source .venv/bin/activate
+
 # Create dev venvs for all components (including root)
-make venv-create-all GROUP=dev
+project venv create --all --group dev
 
 # Activate the root venv (for pre-commit and monorepo tools)
-make venv-switch COMPONENT=root TARGET=dev
+project venv switch root --target dev
 source .venv/bin/activate
 
 # Then activate the venv for the component you're working on
 source packages/shopping-assistant/.venv/bin/activate
 
 # Verify all .info.json files are valid
-make venv-refresh-all
+project venv refresh --all
 ```
 
 **Switching between dev and prod mode**:
 ```bash
 # Create both venvs
-make venv-create COMPONENT=services/shopping-assistant GROUP=dev
-make venv-create COMPONENT=services/shopping-assistant GROUP=prod
+project venv create services/shopping-assistant --group dev
+project venv create services/shopping-assistant --group prod
 
 # Switch to dev for development
-make venv-switch COMPONENT=services/shopping-assistant TARGET=dev
+project venv switch services/shopping-assistant --target dev
 source services/shopping-assistant/.venv/bin/activate
 
 # Switch to prod to test production behavior
-make venv-switch COMPONENT=services/shopping-assistant TARGET=prod
+project venv switch services/shopping-assistant --target prod
 source services/shopping-assistant/.venv/bin/activate
 ```
 
 **Cleaning up and starting fresh**:
 ```bash
 # Remove all venvs everywhere
-make venv-clean-all
+project venv clean --all
 
 # Recreate dev venvs
-make venv-create-all GROUP=dev
+project venv create --all --group dev
 ```
 
 **Using venv-unswitch** (reverse a persistent switch):
 ```bash
 # Create and switch to dev
-make venv-create COMPONENT=packages/shopping-assistant GROUP=dev
-make venv-switch COMPONENT=packages/shopping-assistant TARGET=dev
+project venv create packages/shopping-assistant --group dev
+project venv switch packages/shopping-assistant --target dev
 
 # Work in the switched state...
 
 # Reverse the switch when done
-make venv-unswitch COMPONENT=packages/shopping-assistant
+project venv unswitch packages/shopping-assistant
 
 # Verify: should show .venv-dev as physical directory, active=null
 cat packages/shopping-assistant/.info.json
@@ -401,12 +417,13 @@ deactivate
 
 **Cleaning active venvs without unswitching first**:
 ```bash
-# Old way (required unswitching first):
-make venv-switch COMPONENT=root TARGET=dev
-make venv-unswitch COMPONENT=root
-make venv-clean COMPONENT=root GROUP=dev
+# The project CLI handles active venvs automatically:
+project venv switch root --target dev
+project venv clean root --group dev  # ✅ Works! Detects .venv as active .venv-dev and cleans it
 
-# New way (works directly):
-make venv-switch COMPONENT=root TARGET=dev
-make venv-clean COMPONENT=root GROUP=dev  # ✅ Works! Detects .venv as active .venv-dev
+# Or equivalently:
+project venv switch root --target dev
+project venv clean root  # Cleans all venvs including active
 ```
+
+The CLI automatically detects active venvs via `.info.json` and operates on them correctly.

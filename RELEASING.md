@@ -56,20 +56,11 @@ Auto sync: PR main → develop, auto-merge, delete release branch
 
 ## Version Bumping
 
-To bump versions across all components (unified monorepo), use the **`scripts/ci/bump_version.py`** script:
+To bump versions across all components (unified monorepo):
 
 ```bash
-# Show what would change (displays before/after versions in a table)
-python3 scripts/ci/bump_version.py \
-  --repo-root . \
-  --part prerelease \
-  --prerelease-prefix dev
-
-# Actual bump (modifies all pyproject.toml files)
-python3 scripts/ci/bump_version.py \
-  --repo-root . \
-  --part prerelease \
-  --prerelease-prefix dev
+# Bump (modifies all pyproject.toml files)
+project version bump --part prerelease --prerelease-prefix dev
 ```
 
 **Available parts**:
@@ -84,22 +75,13 @@ Prerelease versions follow the format: `X.Y.Z-{prefix}.{id}` (e.g., `0.1.0-dev.0
 
 ```bash
 # Bump to next dev version (0.1.0-dev.0 → 0.1.0-dev.1)
-python3 scripts/ci/bump_version.py \
-  --repo-root . \
-  --part prerelease \
-  --prerelease-prefix dev
+project version bump --part prerelease --prerelease-prefix dev
 
 # Bump to next rc version (0.1.0-rc.0 → 0.1.0-rc.1)
-python3 scripts/ci/bump_version.py \
-  --repo-root . \
-  --part prerelease \
-  --prerelease-prefix rc
+project version bump --part prerelease --prerelease-prefix rc
 
 # Change from dev to rc (0.1.0-dev.5 → 0.1.0-rc.0)
-python3 scripts/ci/bump_version.py \
-  --repo-root . \
-  --part prerelease \
-  --prerelease-prefix rc
+project version bump --part prerelease --prerelease-prefix rc
 ```
 
 **Prerelease prefix behavior**:
@@ -113,18 +95,11 @@ python3 scripts/ci/bump_version.py \
 ```bash
 # Allow downgrading versions (disabled by default)
 # Useful for reverting to earlier prerelease versions
-python3 scripts/ci/bump_version.py \
-  --repo-root . \
-  --part prerelease \
-  --prerelease-prefix dev \
-  --allow-downgrade
+project version bump --part prerelease --prerelease-prefix dev --allow-downgrade
 
-# Bump only specific components (defaults to all if not specified)
-python3 scripts/ci/bump_version.py \
-  --repo-root . \
-  --part prerelease \
-  --prerelease-prefix rc \
-  --component packages/shopping-assistant services/shopping-assistant
+# Bump only specific component (defaults to all if not specified)
+project version bump --part prerelease --prerelease-prefix rc \
+  --component packages/shopping-assistant
 ```
 
 **After bumping**:
@@ -187,10 +162,7 @@ Examples: 0.1.0-dev.0, 0.1.0-dev.1, 0.2.0-dev.0
 1. **Bump version using the bump script**:
    ```bash
    # Bump to next dev version (0.1.0-dev.0 → 0.1.0-dev.1)
-   python3 scripts/ci/bump_version.py \
-     --repo-root . \
-     --part prerelease \
-     --prerelease-prefix dev
+   project version bump --part prerelease --prerelease-prefix dev
    ```
 
 2. **Add CHANGELOG entries** (optional for dev):
@@ -243,10 +215,7 @@ Examples: 0.1.0-dev.0, 0.1.0-dev.1, 0.2.0-dev.0
 3. **Bump version to RC0 using the script**:
    ```bash
    # Bump to rc.0 (0.1.0-dev.5 → 0.1.0-rc.0)
-   python3 scripts/ci/bump_version.py \
-     --repo-root . \
-     --part prerelease \
-     --prerelease-prefix rc
+   project version bump --part prerelease --prerelease-prefix rc
    ```
 
 4. **Update CHANGELOG**:
@@ -318,10 +287,7 @@ Examples: 0.1.0-dev.0, 0.1.0-dev.1, 0.2.0-dev.0
 2. **Bump RC version using the script**:
    ```bash
    # Bump to next RC (0.1.0-rc.1 → 0.1.0-rc.2)
-   python3 scripts/ci/bump_version.py \
-     --repo-root . \
-     --part prerelease \
-     --prerelease-prefix rc
+   project version bump --part prerelease --prerelease-prefix rc
    ```
 
 3. **Update CHANGELOG with new [v0.1.0-rc.1] entry**:
