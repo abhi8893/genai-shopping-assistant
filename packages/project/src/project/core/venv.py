@@ -12,6 +12,9 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
+_HERE = Path(__file__).parent
+LOCKFILE_DOCKERFILE = _HERE / "Dockerfile.lockfile"
+
 
 class StatusCode(Enum):
     SUCCESS = 0
@@ -50,7 +53,6 @@ def build_lockfile_container(
     repo_root: Path, component: str | None, all_components: bool
 ) -> Status:
     image_tag = "uv-venv-builder:latest"
-    dockerfile = "scripts/Dockerfile.lockfile"
 
     build_result = subprocess.run(
         [
@@ -62,7 +64,7 @@ def build_lockfile_container(
             "-t",
             image_tag,
             "-f",
-            dockerfile,
+            LOCKFILE_DOCKERFILE,
         ],
         check=False,
         cwd=repo_root,
