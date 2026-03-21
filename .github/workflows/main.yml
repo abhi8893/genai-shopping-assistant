@@ -357,6 +357,8 @@ jobs:
         run: |
           echo "Running API tests for ${{ matrix.service }}"
           bash services/ecom-backend/tests/api/test_users_api.sh "${MAIN_SERVICE_PORT}"
+          bash services/ecom-backend/tests/api/test_carts_api.sh "${MAIN_SERVICE_PORT}"
+          bash services/ecom-backend/tests/api/test_products_api.sh "${MAIN_SERVICE_PORT}"
 
       - name: Retag and push cache image
         run: |
