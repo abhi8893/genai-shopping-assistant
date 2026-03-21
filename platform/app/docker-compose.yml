@@ -61,7 +61,12 @@ services:
       target: prod
     image: ${REGISTRY:-}ecom-backend:${IMAGE_TAG}
     ports:
-      - "${ECOM_API_PORT}:8000"      
+      - "${ECOM_API_PORT}:8000"
+    environment:
+      ECOM_BACKEND_DB_NAME: ${ECOM_BACKEND_DB_NAME}
+    volumes:
+      - ${REPO_ROOT}/services/ecom-backend/data:/project/services/ecom-backend/data
+      
 
 volumes:
   weaviate_data:

@@ -285,14 +285,18 @@ jobs:
           SHORT_SHA=${SHORT_SHA:0:7}
           IMAGE_CACHE_TAG="${BRANCH_NAME}-latest"
           IMAGE_PUSH_TAG="${BRANCH_NAME}-${SHORT_SHA}"
-          echo "IMAGE_PUSH_TAG=${IMAGE_PUSH_TAG}" >> "$GITHUB_ENV"
+          
 
           # Remove trailing slash from registry
           REGISTRY="${{ env.REGISTRY }}"
           REGISTRY="${REGISTRY%/}"
           
-          echo "IMAGE_CACHE_URI=${REGISTRY}/${{ matrix.service }}:${IMAGE_CACHE_TAG}" >> "$GITHUB_ENV"
-          echo "IMAGE_PUSH_URI=${REGISTRY}/${{ matrix.service }}:${IMAGE_PUSH_TAG}" >> "$GITHUB_ENV"
+          {
+            echo "IMAGE_CACHE_URI=${REGISTRY}/${{ matrix.service }}:${IMAGE_CACHE_TAG}"
+            echo "IMAGE_PUSH_URI=${REGISTRY}/${{ matrix.service }}:${IMAGE_PUSH_TAG}"
+            echo "IMAGE_PUSH_TAG=${IMAGE_PUSH_TAG}"
+            echo "IMAGE_TAG=${IMAGE_PUSH_TAG}"
+          } >> "$GITHUB_ENV"
 
       - name: Pull latest image
         run: |
@@ -302,7 +306,6 @@ jobs:
       - name: Build Docker image
         run: |
           echo "Building Docker image for ${{ matrix.service }}"
-          export IMAGE_TAG="${{ env.IMAGE_PUSH_TAG }}"
           make app-prod CI=true SERVICES="${{ matrix.service }}"
 
       - name: Push Docker image
@@ -315,6 +318,47 @@ jobs:
           echo "Running unit tests for ${{ matrix.service }}"
           docker run --rm "${{ env.IMAGE_PUSH_URI }}" \
             sh -c "uv pip install --system . --group test && uv run pytest tests/unit"
+
+      - name: Set environment variables
+        run: |
+
+          set -a
+          source platform/app/.env.ci
+          set +a
+
+          if [ "${{ matrix.service }}" == "ecom-backend" ]; then
+            echo "MAIN_SERVICE_PORT=${ECOM_API_PORT}" >> "$GITHUB_ENV"
+
+          elif [ "${{ matrix.service }}" == "shopping-assistant" ]; then
+            echo "MAIN_SERVICE_PORT=${SHOPPING_ASSISTANT_PORT}" >> "$GITHUB_ENV"
+          fi
+
+      - name: Health check
+        run: |
+
+          # Start the service
+          make app-prod CI=true SERVICES="${{ matrix.service }}"
+
+          start=$(date +%s)
+          until curl -s "http://localhost:${MAIN_SERVICE_PORT}/health" > /dev/null 2>&1; do
+            now=$(date +%s)
+            if [ "$((now - start))" -gt 60 ]; then
+              echo "Timeout waiting for health check"
+              exit 1
+            fi
+            echo "Waiting for health check..."
+            sleep 0.1
+          done
+
+          echo "Health check passed"
+
+      - name: API tests
+        if: matrix.service == 'ecom-backend'
+        run: |
+          echo "Running API tests for ${{ matrix.service }}"
+          bash services/ecom-backend/tests/api/test_users_api.sh "${MAIN_SERVICE_PORT}"
+          bash services/ecom-backend/tests/api/test_carts_api.sh "${MAIN_SERVICE_PORT}"
+          bash services/ecom-backend/tests/api/test_products_api.sh "${MAIN_SERVICE_PORT}"
 
       - name: Retag and push cache image
         run: |

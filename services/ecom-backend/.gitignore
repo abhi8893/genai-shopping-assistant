@@ -1,5 +1,6 @@
 .env
 *.db
+!data/ecom_backend_ci.db
 
 # Virtual environments
 .venv-*
