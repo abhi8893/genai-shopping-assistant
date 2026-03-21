@@ -72,7 +72,7 @@ class CartService:
             cart_items=cart_items_db_prep_result["cart_items"],
         )
 
-        saved_cart = self.repo.create(cart_db, user_id)
+        saved_cart = self.repo.create(cart_db)
         return CartData.model_validate(saved_cart)
 
     def empty_cart(self, cart_id: int) -> CartData:
