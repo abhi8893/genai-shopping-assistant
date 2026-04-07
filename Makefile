@@ -76,8 +76,10 @@ local-run-prod:
 
 # TODO: Adhoc way to ingest products into vectorstore
 ingest-products-vectordb:
-	uv run --python services/shopping-assistant/.venv services/shopping-assistant/scripts/ingest_product_data_into_vectorstore.py
-
+	VIRTUAL_ENV=services/shopping-assistant/.venv uv run --active \
+	services/shopping-assistant/scripts/ingest_product_data_into_vectorstore.py \
+	--env $(ENV) \
+	--ecom-backend-db-sqlite-path $(ECOM_BACKEND_DB_SQLITE_PATH)
 
 # Pre-commit targets with conditional FILE handling
 check-all:
