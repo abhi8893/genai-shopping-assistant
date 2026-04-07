@@ -10,25 +10,25 @@ version = "0.1.0-dev.0"
 requires-python = ">=3.12"
 
 dependencies = [
-    "python-dotenv", "langgraph",
-    "openai-agents", "openai",
-    "langchain", "langchain_community",
+    "python-dotenv",
+    "langgraph",
+    "openai-agents",
+    "openai",
+    "langchain",
+    "langchain_community",
     "weaviate-client",
     "gradio",
-    "langfuse",
+    "langfuse<4.0.0",
     "openinference-instrumentation-openai-agents",
     "logfire",
-    "click"
+    "click",
 ]
 
 [project.scripts]
 shopping-assistant = "shopping_assistant.cli:main"
 
 [dependency-groups]
-dev = [
-    { include-group = "test" },
-    { include-group = "notebook" }
-]
+dev = [{ include-group = "test" }, { include-group = "notebook" }]
 test = ["pytest", "pytest-cov"]
 notebook = ["jupyter"]
 
@@ -43,5 +43,5 @@ shopping_assistant = ["config/*.yml", ".env.example"]
 [tool.pytest.ini_options]
 markers = [
     "slow: mark tests as slow (deselect with '-m \"not slow\"')",
-    "ci: mark tests to always run in CI (deselect with '-m \"not ci\"')"
+    "ci: mark tests to always run in CI (deselect with '-m \"not ci\"')",
 ]
