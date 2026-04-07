@@ -41,6 +41,7 @@ def create_product_hierarchy(df_prod_raw):
     df_hier_prep["subcategory_slug"] = (
         df_hier_prep["subcategory_name"].str.lower().str.replace(" ", "-")
     )
+    df_hier_prep["id"] = range(1, len(df_hier_prep) + 1)
     return df_hier_prep
 
 
@@ -66,7 +67,9 @@ def prepare_products_data(df_prod_raw, df_hier_prep):
         validate="many_to_one",
     )
     df_prod_prep["slug"] = df_prod_prep["name"].str.lower().str.replace(" ", "-")
+    df_prod_prep["id"] = range(1, len(df_prod_prep) + 1)
     cols_to_keep = [
+        "id",
         "name",
         "slug",
         "description",
@@ -80,33 +83,20 @@ def prepare_products_data(df_prod_raw, df_hier_prep):
 def initialize_database(engine):
     with engine.connect() as conn:
         sql_script = """
-        DROP TABLE IF EXISTS product;
-        DROP TABLE IF EXISTS product_hierarchy;
-        CREATE TABLE IF NOT EXISTS product_hierarchy (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            category_id INTEGER NOT NULL,
-            subcategory_id INTEGER NOT NULL,
-            category_name TEXT NOT NULL,
-            subcategory_name TEXT NOT NULL,
-            category_slug TEXT NOT NULL,
-            subcategory_slug TEXT NOT NULL,
-            UNIQUE (category_id, subcategory_id)
-        );
-        CREATE TABLE IF NOT EXISTS product (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            slug TEXT NOT NULL,
-            description TEXT NOT NULL,
-            category_id INTEGER NOT NULL,
-            subcategory_id INTEGER NOT NULL,
-            price INTEGER NOT NULL,
-            created_at datetime default current_timestamp,
-            FOREIGN KEY (category_id) REFERENCES product_hierarchy(category_id),
-            FOREIGN KEY (subcategory_id) REFERENCES product_hierarchy(subcategory_id)
-        );
-        DELETE FROM sqlite_sequence WHERE name IN ('product', 'product_hierarchy');
+        DELETE FROM product;
+        DELETE FROM product_hierarchy;
         """
         execute_sql_script(conn, sql_script)
+
+        check_seq_sql = """
+        SELECT name FROM sqlite_master WHERE type='table' AND name='sqlite_sequence';
+        """
+        result = conn.execute(sql_text(check_seq_sql)).fetchone()
+        if result:
+            seq_reset_sql = """
+            DELETE FROM sqlite_sequence WHERE name IN ('product', 'product_hierarchy');
+            """
+            execute_sql_script(conn, seq_reset_sql)
 
 
 def execute_sql_script(conn, sql_script):
