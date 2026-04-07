@@ -1,7 +1,7 @@
 from core.database import Base
 from sqlalchemy import Column, Enum, Integer, String
 from sqlalchemy.orm import relationship
-from sqlalchemy.sql.expression import text
+from sqlalchemy.sql import func as sqlfunc
 from sqlalchemy.sql.sqltypes import TIMESTAMP
 
 __all__ = ("UserDB",)
@@ -17,7 +17,7 @@ class UserDB(Base):
         Enum("admin", "user", name="user_role"), nullable=False, server_default="user"
     )
     created_at = Column(
-        TIMESTAMP(timezone=True), server_default=text("NOW()"), nullable=False
+        TIMESTAMP(timezone=True), server_default=sqlfunc.now(), nullable=False
     )
 
     carts = relationship("CartDB", back_populates="user")
