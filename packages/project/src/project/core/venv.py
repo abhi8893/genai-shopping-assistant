@@ -275,7 +275,9 @@ def _update_clean_info(
             [os.path.basename(f) for f in glob.glob(str(component_path / ".venv-*"))]
         )
         venv_name = f".venv-{group}" if group else None
-        if group and current_active == venv_name:
+        # If cleaning all venvs (group is None), clear active
+        # If cleaning specific group and it's the active one, clear active
+        if (not group and current_active) or (group and current_active == venv_name):
             data["venv"]["active"] = None
     info_file.write_text(json.dumps(data, indent=4))
 
