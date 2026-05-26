@@ -27,3 +27,8 @@ class UserService:
     def get_all(self, page: int, limit: int) -> list[UserData]:
         user_db_list = self.repo.get_all(page, limit)
         return [UserData.model_validate(user_db) for user_db in user_db_list]
+
+    def delete(self, user_id: int) -> UserData:
+        user = self.get(user_id)
+        self.repo.delete(user_id)
+        return user

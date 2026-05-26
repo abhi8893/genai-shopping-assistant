@@ -30,3 +30,17 @@ def get_user(user_id: int, service: UserService = Depends(get_user_service)):
 )
 def create_user(user: UserCreate, service: UserService = Depends(get_user_service)):
     return service.create(user)
+
+
+# Delete a user
+@router.delete(
+    "/{user_id}",
+    response_model=UserData,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(get_current_admin_user)],
+)
+def delete_user(
+    user_id: int,
+    service: UserService = Depends(get_user_service),
+):
+    return service.delete(user_id)
