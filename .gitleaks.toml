@@ -97,6 +97,9 @@ paths = [
     '''build/''',
     '''\.egg-info/''',
 
+    # CI
+    '''\.env\.ci$''',
+
     # Example and template files (contain dummy secrets)
     '''\.env(\..+)?\.example$''',
     '''\.env(\..+)?\.template$''',

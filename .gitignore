@@ -110,6 +110,9 @@ gitleaks-report.*
 # data
 data/*
 
+# data needed for CI tests
+!data/products_extended.csv
+
 # keep gitkeep
 !**/.gitkeep
 
