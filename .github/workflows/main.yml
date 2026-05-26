@@ -350,6 +350,9 @@ jobs:
           # Create data directory if it doesn't exist
           mkdir -p data
 
+          ls -l
+          ls -l data
+
           # Create DB
           uv run alembic upgrade head
 

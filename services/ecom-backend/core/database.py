@@ -8,7 +8,7 @@ from sqlalchemy.orm import sessionmaker
 from core.config import settings
 
 # CI doesn't play well with relative path
-data_dir = os.path.join(os.path.dirname(__file__), "..", "data")
+data_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data"))
 os.makedirs(data_dir, exist_ok=True)
 db_file = os.path.join(data_dir, f"{settings.db_name}.db")
 DATABASE_URL = f"sqlite:///{db_file}"
