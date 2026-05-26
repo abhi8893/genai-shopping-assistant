@@ -347,7 +347,7 @@ jobs:
           cd "${{ github.workspace }}"/services/ecom-backend
           uv sync --no-dev
 
-          # Create data directory if it doesn't exist
+          # Delete and create data directory (so that runner owns it and not root)
           rm -rf data
           mkdir -p data
 
