@@ -25,29 +25,46 @@ A multi-agent LLM system that serves as an intelligent shopping companion for e-
 - Python 3.12
 - [`uv`](https://docs.astral.sh/uv/) — virtual environment and dependency management
 
-### Create virtual environments (recommended)
+### Setup Steps
 
-The monorepo uses Make targets for all venv operations. From the **repo root**:
+Virtual environment operations are managed using the `project` CLI. Follow these steps from the **repo root** to configure your development environment:
+
+#### 1. Setup direnv (semi-manual)
+
+First, refer to [`.claude/rules/direnv-setup.md`](.claude/rules/direnv-setup.md) for the one-time machine pre-setup (installing `direnv` and configuring your shell). Once that's complete, generate and allow the `.envrc` files across all components:
 
 ```bash
-# Create dev venvs for all components at once
-make venv-create-all GROUP=dev
-
-# Or create for a single component
-make venv-create COMPONENT=packages/shopping-assistant GROUP=dev
-make venv-create COMPONENT=services/shopping-assistant GROUP=dev
-make venv-create COMPONENT=services/ecom-backend GROUP=dev
+project direnv setup
 ```
 
-### Activate a virtual environment
+#### 2. Setup project CLI
+
+Bootstrap the monorepo `project` CLI utility:
 
 ```bash
-# Activate directly (without switching)
-source packages/shopping-assistant/.venv-dev/bin/activate
+make setup-project-cli
+```
 
-# Or switch + activate (sets .venv symlink)
-make venv-switch COMPONENT=packages/shopping-assistant TARGET=dev
-source packages/shopping-assistant/.venv/bin/activate
+*Make sure to activate the root venv in your current terminal session so that the `project` CLI is available in your shell:*
+
+```bash
+source .venv/bin/activate
+```
+
+#### 3. Create all dev venvs
+
+Create the development virtual environments for all components at once:
+
+```bash
+project venv create --all --group dev --overwrite
+```
+
+#### 4. Switch all components to dev venvs
+
+Switch all component virtual environments to the target `dev` group:
+
+```bash
+project venv switch --all --target dev --include-root
 ```
 
 > See [`.claude/rules/venv-management.md`](.claude/rules/venv-management.md) for full venv management documentation including switching, cleaning, and repairing environments.
