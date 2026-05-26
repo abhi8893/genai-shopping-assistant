@@ -31,3 +31,43 @@ echo " GET /users/1 — Get user by ID"
 echo "============================================"
 curl --fail-with-body -s -X GET "${BASE_URL}/users/1" \
   -H "Accept: application/json" | python3 -m json.tool
+
+echo ""
+echo "============================================"
+echo " POST /users/ — Create user (should FAIL for non-admin)"
+echo "============================================"
+# User 1 (John Doe) has role 'user'
+# User creation should fail with 403 Forbidden.
+HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST "${BASE_URL}/users/" \
+  -H "Accept: application/json" \
+  -H "Content-Type: application/json" \
+  -H "X-User-Id: 1" \
+  -d '{
+    "first_name": "Charlie",
+    "last_name": "Brown",
+    "role": "user"
+  }')
+
+echo "HTTP Status for non-admin: ${HTTP_STATUS} (Expected: 403)"
+if [ "${HTTP_STATUS}" -ne 403 ]; then
+  echo "Error: Expected 403 but got ${HTTP_STATUS}"
+  exit 1
+fi
+
+echo ""
+echo "============================================"
+echo " POST /users/ — Create user (should SUCCEED for admin)"
+echo "============================================"
+# User 2 (Jane Smith) has role 'admin'
+# User creation should succeed with 201 Created.
+CREATED_USER=$(curl --fail-with-body -s -X POST "${BASE_URL}/users/" \
+  -H "Accept: application/json" \
+  -H "Content-Type: application/json" \
+  -H "X-User-Id: 2" \
+  -d '{
+    "first_name": "Charlie",
+    "last_name": "Brown",
+    "role": "user"
+  }')
+echo "${CREATED_USER}" | python3 -m json.tool
+

@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, status
 
-from domains.users.api.dependencies import get_user_service
-from domains.users.schemas import UserData
+from domains.users.api.dependencies import get_current_admin_user, get_user_service
+from domains.users.schemas import UserCreate, UserData
 from domains.users.service import UserService
 
 router = APIRouter(tags=["users"], prefix="/users")
@@ -19,3 +19,14 @@ def get_all_users(
 @router.get("/{user_id}", response_model=UserData)
 def get_user(user_id: int, service: UserService = Depends(get_user_service)):
     return service.get(user_id)
+
+
+# Create a user
+@router.post(
+    "/",
+    response_model=UserData,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(get_current_admin_user)],
+)
+def create_user(user: UserCreate, service: UserService = Depends(get_user_service)):
+    return service.create(user)

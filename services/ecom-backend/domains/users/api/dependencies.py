@@ -1,10 +1,15 @@
 from core.database import get_db
-from core.exceptions import ResourceNotFoundException, UnauthorizedException
+from core.exceptions import (
+    ForbiddenException,
+    ResourceNotFoundException,
+    UnauthorizedException,
+)
 from fastapi import Depends, Header
 from sqlalchemy.orm import Session
 
 from domains.users.models import UserDB
 from domains.users.repository import SQLAlchemyUserRepository
+from domains.users.schemas import UserRole
 from domains.users.service import UserService
 
 
@@ -28,6 +33,14 @@ def get_current_user(
         raise ResourceNotFoundException(message="User not found")
 
     return user
+
+
+def get_current_admin_user(
+    current_user: UserDB = Depends(get_current_user),
+) -> UserDB:
+    if current_user.role != UserRole.ADMIN:
+        raise ForbiddenException(message="Only administrators can perform this action")
+    return current_user
 
 
 def get_sqlalchemy_user_repo(db: Session = Depends(get_db)) -> SQLAlchemyUserRepository:
