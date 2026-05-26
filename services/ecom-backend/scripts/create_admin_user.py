@@ -31,20 +31,29 @@ def main():
         required=True,
         help="Database connection URL (e.g. sqlite:///ecom_backend.db)",
     )
+    parser.add_argument(
+        "--default",
+        action="store_true",
+        help="Use default admin user details without prompting.",
+    )
     args = parser.parse_args()
 
     logger.info("=== Create Admin User ===")
 
-    # Gracefully handle non-interactive environments (e.g. EOFError)
-    try:
-        first_name = input("First Name [Admin]: ").strip() or "Admin"
-    except EOFError:
+    if args.default:
         first_name = "Admin"
-
-    try:
-        last_name = input("Last Name [User]: ").strip() or "User"
-    except EOFError:
         last_name = "User"
+    else:
+        # Gracefully handle non-interactive environments (e.g. EOFError)
+        try:
+            first_name = input("First Name [Admin]: ").strip() or "Admin"
+        except EOFError:
+            first_name = "Admin"
+
+        try:
+            last_name = input("Last Name [User]: ").strip() or "User"
+        except EOFError:
+            last_name = "User"
 
     engine = create_engine(args.db_url)
     Session = sessionmaker(bind=engine)  # noqa: N806
