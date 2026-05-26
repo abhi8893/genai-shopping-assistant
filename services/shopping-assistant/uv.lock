@@ -2622,7 +2622,7 @@ requires-dist = [
     { name = "gradio" },
     { name = "langchain" },
     { name = "langchain-community" },
-    { name = "langfuse" },
+    { name = "langfuse", specifier = "<4.0.0" },
     { name = "langgraph" },
     { name = "logfire" },
     { name = "openai" },
