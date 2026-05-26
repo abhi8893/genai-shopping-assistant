@@ -321,7 +321,7 @@ jobs:
 
       - name: Set environment variables
         run: |
-          cat platform/app/.env.ci >> "$GITHUB_ENV"
+          grep -v '^#' platform/app/.env.ci | grep -v '^[[:space:]]*$' >> "$GITHUB_ENV"
 
           set -a
           source platform/app/.env.ci
