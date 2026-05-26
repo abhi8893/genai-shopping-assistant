@@ -348,6 +348,7 @@ jobs:
           uv sync --no-dev
 
           # Create data directory if it doesn't exist
+          rm -rf data
           mkdir -p data
 
           ls -l
