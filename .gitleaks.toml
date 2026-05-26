@@ -98,8 +98,8 @@ paths = [
     '''\.egg-info/''',
 
     # Example and template files (contain dummy secrets)
-    '''\.env\.example$''',
-    '''\.env\.template$''',
+    '''\.env(\..+)?\.example$''',
+    '''\.env(\..+)?\.template$''',
     '''config\.example\.''',
     '''config\.template\.''',
 
