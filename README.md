@@ -179,35 +179,143 @@ Configures Langfuse infrastructure ports (web, worker, Postgres, ClickHouse, Min
 
 ## 4. How to Run
 
-All run commands are invoked from the **repo root** via Make targets.
+All instructions assume commands are executed from the **repository root** unless specified otherwise.
 
-### Step 1 — Configure environment variables
+### Prerequisites & Parameters
+Ensure you have the following parameters ready before beginning:
+- `{env}`: Your target environment (typically `dev` or `prod`).
+- `ECOM_BACKEND_DB_NAME`: The base filename for your e-commerce database.
 
-Fill in `platform/app/.env` (and optionally `.env.dev`) as described in [Service Configuration](#3-service-configuration).
+---
 
-### Step 2 — Start the stack
-
-| Command | What it runs |
-|---|---|
-| `make langfuse-dev` | Observability stack only (dev) |
-| `make langfuse-prod` | Observability stack only (prod) |
-| `make app-dev` | App stack only — weaviate, ollama, shopping-assistant, ecom-backend (dev) |
-| `make app-prod` | App stack only (prod) |
-| `make local-run-dev` | Full stack — `langfuse-dev` + `app-dev` |
-| `make local-run-prod` | Full stack — `langfuse-prod` + `app-prod` |
-
-To run a subset of app services, pass `SERVICES`:
-
+### Step 0: Initialize Environment Files
+Copy the template files to create the active configuration profiles for both the core application and the observability suite:
 ```bash
-make app-dev SERVICES=shopping-assistant,ecom-backend
+# Core App
+cp platform/app/.env.example platform/app/.env
+cp platform/app/.env.dev.example platform/app/.env.dev
+
+# Observability (Langfuse)
+cp platform/observability/.env.example platform/observability/.env
+cp platform/observability/.env.dev.example platform/observability/.env.dev
 ```
 
-### Step 3 — Ingest product data
-
-After Weaviate is running, ingest product data into the vector store:
-
+### Step 1: Bootstrap the Project CLI
+Initialize the root virtual environment and install the monorepo's `project` CLI tool:
 ```bash
-make ingest-products-vectordb
+make setup-project-cli
+```
+*Note: Make sure to activate the root virtual environment in your current shell session so the `project` CLI is natively available:*
+```bash
+source .venv/bin/activate
+```
+
+### Step 2: Configure Environment Auto-Loading (`direnv`)
+Set up and authorize the local environment configurations across all components.
+```bash
+project direnv setup --all
+```
+
+### Step 3: Create Component Virtual Environments
+Generate isolation containers for all components tailored to your active environment (`{env}`):
+```bash
+project venv create --all --group {env} --overwrite
+```
+
+### Step 4: Switch Active Environments
+Bind all component environments to the newly-created environment group:
+```bash
+project venv switch --all --target {env} --include-root
+```
+
+### Step 5: Clean Docker State
+If performing a fresh clean start, tear down existing docker containers and remove their volume mounts:
+```bash
+docker compose -f platform/app/docker-compose.yml -p app-{env} down -v
+docker compose -f platform/observability/docker-compose.langfuse.yml -p langfuse-{env} down -v
+```
+
+### Step 6: Delete Dangling Docker Images
+Optionally prune existing local images to avoid layer/cache conflicts:
+```bash
+docker images -q | xargs docker rmi -f
+```
+
+### Step 7: Launch the Observability Stack (Langfuse)
+Start the background telemetry infrastructure:
+```bash
+make langfuse-{env}
+```
+
+### Step 8: Initialize and Seed Ecom Backend DB
+Export variables, navigate to the `ecom-backend` service, and run migrations/seeders against SQLite:
+```bash
+# 1. Define configuration vars
+export ECOM_BACKEND_DB_NAME="ecom_backend" # Or your preferred name
+export REPO_ROOT=$(pwd)
+
+# 2. Enter the service context
+cd services/ecom-backend
+
+# 3. Apply database schema migrations
+VIRTUAL_ENV=.venv uv run --active alembic upgrade head
+
+# 4. Ingest raw product catalog
+VIRTUAL_ENV=.venv uv run --active scripts/ingest_product_data.py \
+  --reset-db \
+  --db-url sqlite:///data/${ECOM_BACKEND_DB_NAME}.db \
+  --data-file products_extended.csv \
+  --data-dir "${REPO_ROOT}/data"
+
+# 5. Seed default admin user
+VIRTUAL_ENV=.venv uv run --active scripts/create_admin_user.py \
+  --default \
+  --db-url sqlite:///data/${ECOM_BACKEND_DB_NAME}.db
+
+# 6. Return to repo root
+cd "${REPO_ROOT}"
+```
+
+### Step 9: Validate Ecom API Service
+Launch the Docker stack for `ecom-backend` and run the endpoint test suites:
+```bash
+# Start ecom-backend service
+make app-{env} SERVICES=ecom-backend
+
+# Note the ECOM_API_PORT configured in your env file (defaults to 8000)
+# Execute api test suites (passing the active port as argument)
+bash services/ecom-backend/tests/api/test_products_api.sh 8000
+bash services/ecom-backend/tests/api/test_users_api.sh 8000
+bash services/ecom-backend/tests/api/test_carts_api.sh 8000
+```
+
+### Step 10: Configure Local LLM Support (Ollama)
+Start Ollama to handle vector embeddings and pull down the target embedder model:
+```bash
+# Start Ollama service
+make app-{env} SERVICES=ollama
+
+# Pull the specific embedding model inside the container
+docker exec -it app-{env}-ollama-1 ollama pull nomic-embed-text
+
+# Verify model accessibility
+docker exec -it app-{env}-ollama-1 ollama list
+```
+
+### Step 11: Ingest Products Into Vector DB
+Run the ETL pipeline to read products from SQLite and build vector embeddings in Weaviate:
+```bash
+# Start Weaviate instance
+make app-{env} SERVICES=weaviate
+
+# Run vector ingestion target
+make ingest-products-vectordb ENV={env} ECOM_BACKEND_DB_SQLITE_PATH=services/ecom-backend/data/${ECOM_BACKEND_DB_NAME}.db
+```
+
+### Step 12: Boot Core Shopping Assistant App
+Bring up the multi-agent conversational engine service:
+```bash
+make app-{env} SERVICES=shopping-assistant
 ```
 
 ---
