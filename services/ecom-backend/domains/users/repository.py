@@ -18,6 +18,10 @@ class UserRepository(ABC):
     def get_all(self, page: int, limit: int) -> list[UserDB]:
         pass
 
+    @abstractmethod
+    def delete(self, user_id: int) -> None:
+        pass
+
 
 class SQLAlchemyUserRepository(UserRepository):
     def __init__(self, db: Session) -> None:
@@ -34,3 +38,7 @@ class SQLAlchemyUserRepository(UserRepository):
 
     def get_all(self, page: int, limit: int) -> list[UserDB]:
         return self.db.query(UserDB).offset((page - 1) * limit).limit(limit).all()
+
+    def delete(self, user_id: int) -> None:
+        self.db.query(UserDB).filter(UserDB.id == user_id).delete()
+        self.db.commit()

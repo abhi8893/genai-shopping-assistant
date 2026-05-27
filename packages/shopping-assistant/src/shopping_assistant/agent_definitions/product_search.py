@@ -116,9 +116,10 @@ class ProductSearchAgent:
         prod_retrieval_agent_response = response.choices[0].message.parsed
 
         if prod_retrieval_agent_response.product_clarification_response:
+            asst_response = prod_retrieval_agent_response.product_clarification_response
             asst_message = {
                 "role": "assistant",
-                "content": prod_retrieval_agent_response.product_clarification_response,
+                "content": f"{self.alias} Agent: {asst_response}",
             }
             new_state = State(
                 messages=[asst_message],

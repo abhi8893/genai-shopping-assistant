@@ -321,6 +321,7 @@ jobs:
 
       - name: Set environment variables
         run: |
+          grep -v '^#' platform/app/.env.ci | grep -v '^[[:space:]]*$' >> "$GITHUB_ENV"
 
           set -a
           source platform/app/.env.ci
@@ -332,6 +333,35 @@ jobs:
           elif [ "${{ matrix.service }}" == "shopping-assistant" ]; then
             echo "MAIN_SERVICE_PORT=${SHOPPING_ASSISTANT_PORT}" >> "$GITHUB_ENV"
           fi
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Set up Python
+        run: uv python install "${{ needs.setup.outputs.PYTHON_VERSION }}"
+
+      - name: Pre Setup
+        if: matrix.service == 'ecom-backend'
+        run: |
+          # Setup venv and sync all dependencies matching uv.lock
+          cd "${{ github.workspace }}"/services/ecom-backend
+          uv sync --no-dev
+
+          # Delete and create data directory (so that runner owns it and not root)
+          rm -rf data
+          mkdir -p data
+
+          ls -l
+          ls -l data
+
+          # Create DB
+          uv run alembic upgrade head
+
+          # Ingest product data
+          uv run scripts/ingest_product_data.py --reset-db --db-url sqlite:///data/${{ env.ECOM_BACKEND_DB_NAME }}.db --data-file products_extended.csv --data-dir "${{ github.workspace }}/data"
+          
+          # Create admin user
+          uv run scripts/create_admin_user.py --default --db-url sqlite:///data/${{ env.ECOM_BACKEND_DB_NAME }}.db
 
       - name: Health check
         run: |

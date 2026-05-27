@@ -26,3 +26,8 @@ class UnauthorizedException(BaseAppException):
 class ValidationException(BaseAppException):
     def __init__(self, message: str):
         super().__init__(message, status.HTTP_422_UNPROCESSABLE_ENTITY)
+
+
+class ForbiddenException(BaseAppException):
+    def __init__(self, message: str):
+        super().__init__(message, status.HTTP_403_FORBIDDEN)

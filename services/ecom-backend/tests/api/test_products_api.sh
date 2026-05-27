@@ -48,7 +48,7 @@ curl --fail-with-body -s -X GET "${BASE_URL}/products/category/id/1?page=1&limit
 
 echo ""
 echo "============================================"
-echo " GET /products/search?category_slug=electronics — Filter by category slug"
+echo " GET /products/search?category_slug=footwear — Filter by category slug"
 echo "============================================"
-curl --fail-with-body -s -X GET "${BASE_URL}/products/search?category_slug=electronics&page=1&limit=3" \
+curl --fail-with-body -s -X GET "${BASE_URL}/products/search?category_slug=footwear&page=1&limit=3" \
   -H "Accept: application/json" | python3 -m json.tool

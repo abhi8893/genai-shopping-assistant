@@ -1,8 +1,8 @@
-"""add tables
+"""initial schema
 
-Revision ID: 8a3fde54fa59
+Revision ID: e14a2f62b7a3
 Revises:
-Create Date: 2025-11-29 17:44:11.927555
+Create Date: 2026-04-07 18:27:57.022077
 
 """
 
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "8a3fde54fa59"
+revision: str = "e14a2f62b7a3"
 down_revision: str | Sequence[str] | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
@@ -24,11 +24,14 @@ def upgrade() -> None:
     op.create_table(
         "product_hierarchy",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column("category_id", sa.Integer(), nullable=False),
-        sa.Column("subcategory_id", sa.Integer(), nullable=False),
+        sa.Column("category_id", sa.Integer(), nullable=True),
+        sa.Column("subcategory_id", sa.Integer(), nullable=True),
         sa.Column("category_name", sa.String(), nullable=False),
         sa.Column("subcategory_name", sa.String(), nullable=False),
-        sa.PrimaryKeyConstraint("category_id", "subcategory_id"),
+        sa.Column("category_slug", sa.String(), nullable=False),
+        sa.Column("subcategory_slug", sa.String(), nullable=False),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("category_id", "subcategory_id"),
     )
     op.create_table(
         "user",
@@ -44,7 +47,7 @@ def upgrade() -> None:
         sa.Column(
             "created_at",
             sa.TIMESTAMP(timezone=True),
-            server_default=sa.text("(NOW())"),
+            server_default=sa.text("(CURRENT_TIMESTAMP)"),
             nullable=False,
         ),
         sa.PrimaryKeyConstraint("id"),
@@ -54,12 +57,7 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("user_id", sa.Integer(), nullable=False),
         sa.Column("amount", sa.Float(), nullable=False),
-        sa.Column(
-            "created_at",
-            sa.TIMESTAMP(timezone=True),
-            server_default=sa.text("(NOW())"),
-            nullable=False,
-        ),
+        sa.Column("created_at", sa.TIMESTAMP(timezone=True), nullable=False),
         sa.ForeignKeyConstraint(["user_id"], ["user.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
@@ -69,12 +67,13 @@ def upgrade() -> None:
         sa.Column("category_id", sa.Integer(), nullable=False),
         sa.Column("subcategory_id", sa.Integer(), nullable=False),
         sa.Column("name", sa.String(), nullable=False),
+        sa.Column("slug", sa.String(), nullable=False),
         sa.Column("description", sa.String(), nullable=False),
         sa.Column("price", sa.Float(), nullable=False),
         sa.Column(
             "created_at",
             sa.TIMESTAMP(timezone=True),
-            server_default=sa.text("(NOW())"),
+            server_default=sa.text("(CURRENT_TIMESTAMP)"),
             nullable=False,
         ),
         sa.ForeignKeyConstraint(
