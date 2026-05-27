@@ -1,0 +1,478 @@
+name: Release
+
+# Triggers:
+#   - push to main        → stable release (auto, always tags + GitHub release)
+#   - workflow_dispatch   → dev (from develop) or rc (from release/vX.Y.Z)
+#
+# Release types and version formats:
+#   dev    (develop branch):         X.Y.Z-devN    e.g. 0.1.0-dev1
+#   rc     (release/vX.Y.Z branch):  X.Y.Z-rcN     e.g. 0.1.0-rc0
+#   stable (main branch):            X.Y.Z          e.g. 0.1.0
+
+on:
+  workflow_run:
+    workflows: ["Main workflow"]
+    types: [completed]
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      test_release:
+        description: "Test release (optional)"
+        required: false
+        default: "FALSE"
+        type: choice
+        options:
+          - "TRUE"
+          - "FALSE"
+      
+      # WARNING: This will likely be deprecated / removed as package builds happen in upstream workflow
+      #          Use this to do rc releases when slow tests skipped in main workflow, and 
+      #          either you plan to run them for this rc release OR
+      #          if you want to again skip (then pass skip_slow_tests: TRUE)
+      check_upstream_workflow:
+        description: "Check upstream workflow (optional)"
+        required: false
+        default: "TRUE"
+        type: choice
+        options:
+          - "TRUE"
+          - "FALSE"
+
+      skip_slow_tests:
+        description: "Skip slow tests (optional)"
+        required: false
+        default: "FALSE"
+        type: choice
+        options:
+          - "TRUE"
+          - "FALSE"
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  check_upstream_workflow:
+    runs-on: ubuntu-latest
+
+    outputs:
+      upstream_workflow_run_id: ${{ steps.output_upstream_workflow_run_info.outputs.upstream_workflow_run_id }}
+
+    steps:
+      - name: Check if upstream workflow passed (main release)
+        if: github.event_name == 'workflow_run'
+        run: |
+          STATUS="${{ github.event.workflow_run.conclusion }}"
+
+          # if empty string, set to running
+          if [ -z "$STATUS" ]; then
+            STATUS="running"
+          fi
+
+          # if not successful, fail the workflow
+          if [ "$STATUS" != "success" ]; then
+            echo "Upstream workflow is not successful, failing release"
+            exit 1
+          fi
+
+          echo "upstream_workflow_status=$STATUS" >> "$GITHUB_ENV"
+          echo "upstream_workflow_run_id=${{ github.event.workflow_run.id }}" >> "$GITHUB_ENV"
+      
+      - name: Check if upstream workflow passed (manual trigger)
+        if: (github.event_name == 'workflow_dispatch')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          SHA="${{ github.sha }}"
+
+          echo "Checking upstream workflow for SHA: $SHA"
+
+          UPSTREAM_WORKFLOW_RUN=$(gh run list \
+            --repo ${{ github.repository }} \
+            --workflow "Main workflow" \
+            --commit "$SHA" \
+            --json conclusion,databaseId \
+            --jq '.[0]')
+          STATUS=$(echo "$UPSTREAM_WORKFLOW_RUN" | jq -r '.conclusion')
+          RUN_ID=$(echo "$UPSTREAM_WORKFLOW_RUN" | jq -r '.databaseId')
+
+          # if empty string, set to running
+          if [ -z "$STATUS" ]; then
+            STATUS="running"
+          fi
+
+          # if still running, fail the workflow
+          if [ "$STATUS" = "running" ]; then
+            echo "Upstream workflow is still running, failing release"
+            exit 1
+          fi
+
+          # if check_upstream_workflow is TRUE and upstream workflow is not successful, skip release
+          if [ "${{ github.event.inputs.check_upstream_workflow }}" = "TRUE" ] && [ "$STATUS" != "success" ]; then
+            echo "Upstream workflow is not successful, skipping release"
+            exit 0
+          fi
+
+
+          echo "upstream_workflow_status=$STATUS" >> "$GITHUB_ENV"
+          echo "upstream_workflow_run_id=$RUN_ID" >> "$GITHUB_ENV"
+
+
+      - name: Output upstream workflow run info
+        id: output_upstream_workflow_run_info
+        run: |
+          echo "upstream_workflow_run_status=${{ env.upstream_workflow_status }}" >> "$GITHUB_OUTPUT"
+          echo "upstream_workflow_run_id=${{ env.upstream_workflow_run_id }}" >> "$GITHUB_OUTPUT"
+  setup:
+    name: Setup Release Info
+    needs: [check_upstream_workflow]
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.release_info.outputs.version }}
+      tag_name: ${{ steps.release_info.outputs.tag_name }}
+      release_type: ${{ steps.release_info.outputs.release_type }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Set up Python
+        run: uv python install "${{ env.PYTHON_VERSION }}"
+
+      - name: Setup project cli
+        run: |
+          make setup-project-cli
+
+      - name: Setup virtual environment
+        run: |
+          source .venv/bin/activate
+          project venv create root --group ci
+          project venv switch root --target ci
+
+      - name: Determine release type, validate version format, and compute tag
+        id: release_info
+        run: |
+
+          source .venv/bin/activate
+
+          BRANCH="${{ github.ref_name }}"
+          TEST_RELEASE="${{ github.event.inputs.test_release }}"
+
+          if [ "${{ github.event.inputs.test_release }}" = "TRUE" ]; then
+            OUTPUT=$(project version release-info "$BRANCH" --test-release)
+          else
+            OUTPUT=$(project version release-info "$BRANCH")
+          fi
+
+          VERSION=$(echo "$OUTPUT" | grep '^VERSION=' | cut -d= -f2-)
+          TAG_NAME=$(echo "$OUTPUT" | grep '^TAG_NAME=' | cut -d= -f2-)
+          RELEASE_TYPE=$(echo "$OUTPUT" | grep '^RELEASE_TYPE=' | cut -d= -f2-)
+          RELEASE_BRANCH=$(echo "$OUTPUT" | grep '^RELEASE_BRANCH=' | cut -d= -f2-)
+          TEST_RELEASE=$(echo "$OUTPUT" | grep '^TEST_RELEASE=' | cut -d= -f2-)
+          
+
+          echo "Branch: $BRANCH"
+          echo "Version from pyproject.toml: $VERSION"
+          echo "Release type: $RELEASE_TYPE"
+          echo "Tag name: $TAG_NAME"
+          echo "Release branch: $RELEASE_BRANCH"
+          echo "Test release: $TEST_RELEASE"
+
+          {
+            echo "version=$VERSION"
+            echo "tag_name=$TAG_NAME"
+            echo "release_type=$RELEASE_TYPE"
+            echo "release_branch=$RELEASE_BRANCH"
+            echo "test_release=$TEST_RELEASE"
+          } >> "$GITHUB_OUTPUT"
+
+  validate:
+    name: Validate Release
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Set up Python
+        run: uv python install "${{ env.PYTHON_VERSION }}"
+
+      - name: Setup project cli
+        run: |
+          make setup-project-cli
+
+      - name: Check tag doesn't already exist
+        run: |
+          TAG="${{ needs.setup.outputs.tag_name }}"
+          if git ls-remote --tags origin "refs/tags/${TAG}" | grep -q "refs/tags/${TAG}$"; then
+            echo "Error: Tag ${TAG} already exists!"
+            exit 1
+          fi
+          echo "✓ Tag ${TAG} does not exist"
+
+      - name: Validate version is greater than latest
+        run: |
+          source .venv/bin/activate
+          VERSION="${{ needs.setup.outputs.version }}"
+          LATEST_TAG=$(git tag -l 'v[0-9]*' | sort -V | tail -n 1)
+          if [ -z "$LATEST_TAG" ]; then
+            echo "✓ No existing tags — version $VERSION is valid for initial release"
+          else
+            LATEST_VERSION="${LATEST_TAG#v}"
+            echo "Latest tag: $LATEST_TAG"
+            project version compare "$VERSION" "$LATEST_VERSION"
+          fi
+
+      - name: Validate CHANGELOG entry (rc and stable)
+        if: needs.setup.outputs.release_type == 'rc' || needs.setup.outputs.release_type == 'stable'
+        run: |
+          VERSION="${{ needs.setup.outputs.version }}"
+          if ! grep -r "^## \[v${VERSION}\]" CHANGELOG.md; then
+            echo "Error: No CHANGELOG.md entry found for v${VERSION}"
+            echo "Expected to find a section like: '## [v${VERSION}] (...)'"
+            exit 1
+          fi
+          echo "✓ CHANGELOG.md entry found for v${VERSION}"
+
+  test_packages:
+    name: Test Packages
+    runs-on: ubuntu-latest
+    needs: [check_upstream_workflow, setup, validate]
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ["shopping-assistant", "dummy-pkg"]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Set up Python
+        run: uv python install "${{ env.PYTHON_VERSION }}"
+
+      - name: Setup project cli
+        run: |
+          make setup-project-cli
+
+      - name: Setup test environment
+        run: |
+          source .venv/bin/activate
+          project venv create "packages/${{ matrix.package }}" --group test
+          project venv switch "packages/${{ matrix.package }}" --target test
+
+      - name: Download package
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.package }}-${{ needs.setup.outputs.version }}
+          path: dist/
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ needs.check_upstream_workflow.outputs.upstream_workflow_run_id }}
+
+      - name: Force re-install package (wheel)
+        run: |
+
+          WHEEL_FILE=$(ls dist/*.whl)
+          uv pip install "$WHEEL_FILE" --force-reinstall --python "packages/${{ matrix.package }}/.venv"
+
+      - if: github.event_name == 'workflow_dispatch'
+        name: Run tests (manual trigger release)
+        run: |
+          cd packages/${{ matrix.package }}
+          source .venv/bin/activate
+
+          # check if skip_slow_tests is TRUE
+          if [[ "${{ github.event.inputs.skip_slow_tests }}" == "TRUE" ]]; then
+            echo "WARNING: Running partial tests"
+            pytest -m "not slow"
+          else
+            echo "Running all tests"
+            pytest
+          fi
+
+      - if: github.event_name != 'workflow_dispatch'
+        name: Run tests (automated release)
+        run: |
+          cd packages/${{ matrix.package }}
+          source .venv/bin/activate
+
+          echo "Running all tests"
+          pytest
+
+
+  retag_and_push_service_images:
+    name: Retag and Push Service Images
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [ecom-backend, shopping-assistant]
+    needs: [check_upstream_workflow, setup, validate, test_packages]
+    permissions:
+      contents: read
+      packages: write
+
+    env:
+      REGISTRY: ghcr.io/${{ github.repository }}/
+    steps:
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Set image URI
+        run: |
+          # Remove trailing slash from registry
+          REGISTRY="${{ env.REGISTRY }}"
+          REGISTRY="${REGISTRY%/}"
+
+          # get branch name slug
+          BRANCH_NAME=$(echo "${{ github.ref_name }}" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+|-+$$//g')
+          SHORT_SHA=${{ github.sha }}
+          SHORT_SHA=${SHORT_SHA:0:7}
+          IMAGE_PULL_TAG="${BRANCH_NAME}-${SHORT_SHA}"
+          IMAGE_PUSH_TAG="${{ needs.setup.outputs.tag_name }}"
+          
+          echo "IMAGE_PULL_URI=${REGISTRY}/${{ matrix.service }}:${IMAGE_PULL_TAG}" >> "$GITHUB_ENV"
+          echo "IMAGE_PUSH_URI=${REGISTRY}/${{ matrix.service }}:${IMAGE_PUSH_TAG}" >> "$GITHUB_ENV"
+        
+      - name: Pull image
+        run: |
+          docker pull "${{ env.IMAGE_PULL_URI }}"
+      
+      - name: Retag and push
+        run: |
+          
+          # Retag image
+          docker tag "${{ env.IMAGE_PULL_URI }}" "${{ env.IMAGE_PUSH_URI }}"
+          
+          # Push image
+          docker push "${{ env.IMAGE_PUSH_URI }}"
+          
+  tag_and_release:
+    name: Tag and Release
+    runs-on: ubuntu-latest
+    needs: [check_upstream_workflow, setup, validate, test_packages]
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+      
+
+      # TODO: Handle for case when main workflow was skipped?
+      - name: Download all packages
+        uses: actions/download-artifact@v4
+        with:
+          name: all-packages-${{ needs.setup.outputs.version }}
+          path: dist/
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ needs.check_upstream_workflow.outputs.upstream_workflow_run_id }}
+
+      - name: Create and push tag
+        run: |
+          TAG="${{ needs.setup.outputs.tag_name }}"
+          git tag "$TAG"
+          git push origin "$TAG"
+          echo "✓ Tag $TAG created and pushed"          
+
+      - name: Extract release notes from CHANGELOG
+        id: release_notes
+        if: needs.setup.outputs.release_type != 'dev'
+        run: |
+          VERSION="${{ needs.setup.outputs.version }}"
+          NOTES=$(awk "/^\#\# \[v${VERSION}\]/{found=1; next} found && /^\#\# /{exit} found{print}" CHANGELOG.md)
+          EOF=$(openssl rand -hex 8)
+          {
+            echo "body<<$EOF"
+            echo "$NOTES"
+            echo "$EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        if: needs.setup.outputs.release_type != 'dev'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.setup.outputs.tag_name }}
+          name: ${{ needs.setup.outputs.tag_name }}
+          body: ${{ steps.release_notes.outputs.body }}
+          prerelease: ${{ needs.setup.outputs.release_type == 'rc' }}
+          files: |
+            dist/**/*.whl
+            dist/**/*.tar.gz
+          draft: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  sync_back:
+    name: Sync main → develop
+    runs-on: ubuntu-latest
+    needs: [setup, tag_and_release]
+    if: needs.setup.outputs.release_type == 'stable'
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create PR main → develop
+        id: create_pr
+        env:
+          GH_TOKEN: ${{ secrets.GENAI_SHOP_ASST_REPO_PR_PAT }}
+        run: |
+          VERSION="${{ needs.setup.outputs.version }}"
+
+          # Check if a PR from main → develop already exists
+          EXISTING_PR=$(gh pr list \
+            --base develop --head main \
+            --json url --jq '.[0].url' 2>/dev/null || true)
+
+          if [ -n "$EXISTING_PR" ]; then
+            echo "PR already exists: $EXISTING_PR"
+            echo "pr_url=$EXISTING_PR" >> "$GITHUB_OUTPUT"
+          else
+            PR_URL=$(gh pr create \
+              --base develop \
+              --head main \
+              --title "chore: sync main → develop after v${VERSION} stable release" \
+              --body "Auto-generated PR to sync main back to develop after stable release v${VERSION}.")
+            echo "✓ Created PR: $PR_URL"
+            echo "pr_url=$PR_URL" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Auto-merge PR
+        env:
+          GH_TOKEN: ${{ secrets.GENAI_SHOP_ASST_REPO_PR_PAT }}
+        run: |
+          gh pr merge "${{ steps.create_pr.outputs.pr_url }}" \
+            --merge --auto
+          echo "✓ Auto-merge enabled on PR"
+
+      - name: Delete release branch
+        env:
+          GH_TOKEN: ${{ secrets.GENAI_SHOP_ASST_REPO_PR_PAT }}
+        run: |
+          VERSION="${{ needs.setup.outputs.version }}"
+          RELEASE_BRANCH="release/v${VERSION}"
+          gh api --method DELETE \
+            "repos/${{ github.repository }}/git/refs/heads/${RELEASE_BRANCH}" \
+            && echo "✓ Deleted branch ${RELEASE_BRANCH}" \
+            || echo "⚠ Branch ${RELEASE_BRANCH} not found or already deleted"

@@ -1,0 +1,10 @@
+sqlalchemy
+alembic
+fastapi
+pydantic
+pydantic-settings
+uvicorn
+
+
+# non fastapi dependencies
+pandas

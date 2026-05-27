@@ -1,0 +1,12 @@
+**/*venv*/
+.git
+node_modules
+__pycache__
+dist
+
+# Ignore data folders and env files across services
+# (Since Docker runs with the repository root as the context `context: ${REPO_ROOT}`, 
+# patterns need to live here and be matched across directories)
+**/data/*
+**/.env*
+**/*venv*/

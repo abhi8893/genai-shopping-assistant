@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "shopping-assistant"
+version = "0.1.0"
+
+requires-python = ">=3.12"
+
+dependencies = [
+    "python-dotenv",
+    "langgraph",
+    "openai-agents",
+    "openai",
+    "langchain",
+    "langchain_community",
+    "weaviate-client",
+    "gradio",
+    "langfuse<4.0.0",
+    "openinference-instrumentation-openai-agents",
+    "logfire",
+    "click",
+]
+
+[project.scripts]
+shopping-assistant = "shopping_assistant.cli:main"
+
+[dependency-groups]
+dev = [{ include-group = "test" }, { include-group = "notebook" }]
+test = ["pytest", "pytest-cov"]
+notebook = ["jupyter"]
+
+[tool.setuptools.packages.find]
+where = ["src/"]
+include = ["shopping_assistant*"]
+
+[tool.setuptools.package-data]
+shopping_assistant = ["config/*.yml", ".env.example"]
+
+
+[tool.pytest.ini_options]
+markers = [
+    "slow: mark tests as slow (deselect with '-m \"not slow\"')",
+    "ci: mark tests to always run in CI (deselect with '-m \"not ci\"')",
+]

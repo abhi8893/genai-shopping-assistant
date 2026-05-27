@@ -1,0 +1,3 @@
+from agents import set_tracing_disabled as set_openai_tracing_disabled
+
+set_openai_tracing_disabled(True)

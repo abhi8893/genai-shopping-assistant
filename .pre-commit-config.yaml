@@ -1,0 +1,55 @@
+default_language_version: 
+  python: "3.12"
+
+
+repos:
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-merge-conflict
+        name: check-merge-conflict
+        types: [python]
+
+      - id: no-commit-to-branch
+        name: no-commit-to-branch
+        types: [python]
+        args: [--branch, develop, --branch, main]
+
+      - id: end-of-file-fixer
+        name: end-of-file-fixer
+        types: [python]
+
+      - id: check-yaml
+        name: check-yaml
+        types: [yaml]
+
+      - id: trailing-whitespace
+        name: trailing-whitespace
+        types: [python]
+
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: "v0.14.6"
+    hooks:
+      - id: ruff
+        name: ruff
+        types: [python]
+        args: [--fix, --config, ruff.toml]
+
+      - id: ruff-format
+        name: ruff-format
+        types: [python]
+        args: [--config, ruff.toml]
+
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.10
+    hooks:
+      - id: actionlint
+        name: actionlint
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.0
+    hooks:
+      - id: gitleaks
+        name: gitleaks
+        args: ['--config=.gitleaks.toml']

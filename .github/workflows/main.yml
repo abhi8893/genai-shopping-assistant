@@ -1,0 +1,410 @@
+name: Main workflow
+
+
+on:
+  push:
+    branches:
+      - "**"
+
+
+env:
+  PYTHON_VERSION: "3.12"
+  PACKAGES_RUN_ALL_TESTS: "true"
+  SERVICES_BUILD_IMAGES: "true"
+
+
+jobs:
+
+  setup:
+    name: Setup
+    runs-on: ubuntu-latest
+    outputs:
+      PACKAGES_RUN_ALL_TESTS: ${{ env.PACKAGES_RUN_ALL_TESTS }}
+      SERVICES_BUILD_IMAGES: ${{ env.SERVICES_BUILD_IMAGES }}
+      PYTHON_VERSION: ${{ env.PYTHON_VERSION }}
+
+    steps:
+      # TODO: Find a better way to make variables available to other jobs
+      - name: Does nothing - placeholder since no setup logic needed yet
+        run: echo "Setup step placeholder"
+    
+  
+  run_checks:
+    name: Code Quality Checks
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Set up Python
+        run: uv python install "${{ needs.setup.outputs.PYTHON_VERSION }}"
+
+      - name: Setup project cli
+        run: |
+          make setup-project-cli
+
+      - name: Setup code quality env
+        run: |
+          source .venv/bin/activate
+          project venv create root --group ci
+          project venv switch root --target ci
+          
+
+      - name: Run code quality checks
+        run: |
+          source .venv/bin/activate
+          make SKIP=no-commit-to-branch check-all
+
+  validate_version:
+    name: Validate Version
+    needs: setup
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version_check.outputs.version }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Set up Python
+        run: uv python install "${{ needs.setup.outputs.PYTHON_VERSION }}"
+
+      - name: Setup project cli
+        run: |
+          make setup-project-cli
+
+      - name: Setup virtual environment
+        run: |
+          source .venv/bin/activate
+          project venv create root --group ci
+          project venv switch root --target ci
+
+      - name: Validate version is greater than highest tag
+        id: version_check
+        run: |
+          source .venv/bin/activate
+          VERSION_OUTPUT=$(project version get)
+          VERSION=$(echo "$VERSION_OUTPUT" | grep "^VERSION:" | cut -d' ' -f2)
+
+          echo "Current version: $VERSION"
+
+          LATEST_TAG=$(git tag -l 'v[0-9]*' | sort -V | tail -n 1)
+          if [ -z "$LATEST_TAG" ]; then
+            echo "✓ No existing tags — version $VERSION is valid for initial release"
+          else
+            LATEST_VERSION="${LATEST_TAG#v}"
+            echo "Latest tag: $LATEST_TAG (version: $LATEST_VERSION)"
+
+            project version compare "$VERSION" "$LATEST_VERSION"
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+  build_packages:
+    needs: [setup, run_checks, validate_version]
+    strategy:
+      fail-fast: false
+      matrix:
+        # TODO: Remove dummy-pkg before release
+        package: ["shopping-assistant", "dummy-pkg"] 
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Set up Python
+        run: uv python install "${{ needs.setup.outputs.PYTHON_VERSION }}"
+
+      - name: Build package
+        run: |
+          mkdir dist
+          uv build "packages/${{ matrix.package }}" --out-dir dist
+
+          WHEEL_FILE=$(ls dist/*.whl)
+          SDIST_FILE=$(ls dist/*.tar.gz)
+
+          echo "Created wheel file: $WHEEL_FILE"
+          echo "Created sdist file: $SDIST_FILE"
+
+          echo "WHEEL_FILE=$WHEEL_FILE" >> "$GITHUB_ENV"
+          echo "SDIST_FILE=$SDIST_FILE" >> "$GITHUB_ENV"
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.package }}-${{ needs.validate_version.outputs.version }}
+          path: dist/
+
+
+  test_packages:
+    needs: [setup, validate_version, build_packages]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ["shopping-assistant", "dummy-pkg"]
+    steps:
+      # TODO: Avoid checking out code if wheel can contain "tests" folder
+      # TODO: Perhaps test with build in one matrix is better. 
+      #       The tests step could just add test report as artifact which could be downloaded
+      #       separately to tag as ALL or PARTIAL
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Set up Python
+        run: uv python install "${{ needs.setup.outputs.PYTHON_VERSION }}"
+
+      
+      - name: Download package artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.package }}-${{ needs.validate_version.outputs.version }}
+          path: dist/
+
+      - name: Setup project cli
+        run: |
+          make setup-project-cli
+
+      - name: Setup test environment
+        run: |
+          source .venv/bin/activate
+          project venv create "packages/${{ matrix.package }}" --group test
+          project venv switch "packages/${{ matrix.package }}" --target test
+
+      - name: Test package (wheel)
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+
+          WHEEL_FILE=$(ls dist/*.whl)
+          SDIST_FILE=$(ls dist/*.tar.gz)
+
+          echo "Found wheel file: $WHEEL_FILE"
+          echo "Found sdist file: $SDIST_FILE"
+
+          # force re-install built wheel file (to avoid running tests against local imports)
+          uv pip install "$WHEEL_FILE" --force-reinstall --python "packages/${{ matrix.package }}/.venv"
+          cd packages/${{ matrix.package }}
+
+          source .venv/bin/activate
+
+          # pkg="${{ matrix.package }}"
+          # pkg_var="${pkg//-/_}" 
+          status_var="TEST_STATUS" 
+
+          # check if commit message starts with [include-slow-tests]
+          # Always run all tests if the branch is in [develop, main, fix/develop-ci-tests-bug]
+          if [[ "${{ needs.setup.outputs.PACKAGES_RUN_ALL_TESTS }}" == "true" ]] || [[ "${{ github.ref_name }}" = "develop" ]] || [[ "${{ github.ref_name }}" = "main" ]]; then
+            echo "Running all tests including slow ones"
+            pytest
+            echo "${status_var}=ALL" >> "$GITHUB_ENV"
+          else
+            echo "Running tests excluding slow ones"
+            pytest -m "not slow"
+            echo "${status_var}=PARTIAL" >> "$GITHUB_ENV"
+          fi
+
+      - name: Test status (ALL or PARTIAL)
+        run: |
+          
+          if [ "${{ env.TEST_STATUS }}" = "ALL" ]; then
+            echo "All tests passed"
+            exit 0
+          else
+            echo "Partial tests passed"
+            exit 1
+          fi
+
+
+  upload_packages:
+    needs: [validate_version, build_packages]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist/
+      - name: Upload all packages together
+        uses: actions/upload-artifact@v4
+        with:
+          name: all-packages-${{ needs.validate_version.outputs.version }}
+          path: dist/
+  
+
+  build_services:
+    if: ${{ needs.setup.outputs.SERVICES_BUILD_IMAGES == 'true'  ||  github.ref_name == 'develop'  ||  github.ref_name == 'main' }}
+
+    runs-on: ubuntu-latest
+    needs: setup
+    permissions:
+      contents: read
+      packages: write
+    
+    strategy:
+      matrix:
+        service: [ecom-backend, shopping-assistant]
+    env:
+      REGISTRY: ghcr.io/${{ github.repository }}/
+      DOCKER_BUILDKIT: 1
+      COMPOSE_DOCKER_CLI_BUILD: 1
+
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set image uri
+        run: |
+          
+          # get branch name slug
+          BRANCH_NAME=$(make slugify STR="${{ github.ref_name }}")
+          SHORT_SHA=${{ github.sha }}
+          SHORT_SHA=${SHORT_SHA:0:7}
+          IMAGE_CACHE_TAG="${BRANCH_NAME}-latest"
+          IMAGE_PUSH_TAG="${BRANCH_NAME}-${SHORT_SHA}"
+          
+
+          # Remove trailing slash from registry
+          REGISTRY="${{ env.REGISTRY }}"
+          REGISTRY="${REGISTRY%/}"
+          
+          {
+            echo "IMAGE_CACHE_URI=${REGISTRY}/${{ matrix.service }}:${IMAGE_CACHE_TAG}"
+            echo "IMAGE_PUSH_URI=${REGISTRY}/${{ matrix.service }}:${IMAGE_PUSH_TAG}"
+            echo "IMAGE_PUSH_TAG=${IMAGE_PUSH_TAG}"
+            echo "IMAGE_TAG=${IMAGE_PUSH_TAG}"
+          } >> "$GITHUB_ENV"
+
+      - name: Pull latest image
+        run: |
+          echo "Pulling latest image for ${{ matrix.service }}"
+          docker pull "${{ env.IMAGE_CACHE_URI }}" || true
+
+      - name: Build Docker image
+        run: |
+          echo "Building Docker image for ${{ matrix.service }}"
+          make app-prod CI=true SERVICES="${{ matrix.service }}"
+
+      - name: Push Docker image
+        run: |
+          echo "Pushing Docker image for ${{ matrix.service }}"
+          docker push "${{ env.IMAGE_PUSH_URI }}"
+      
+      - name: Unit tests
+        run: |
+          echo "Running unit tests for ${{ matrix.service }}"
+          docker run --rm "${{ env.IMAGE_PUSH_URI }}" \
+            sh -c "uv pip install --system . --group test && uv run pytest tests/unit"
+
+      - name: Set environment variables
+        run: |
+          grep -v '^#' platform/app/.env.ci | grep -v '^[[:space:]]*$' >> "$GITHUB_ENV"
+
+          set -a
+          source platform/app/.env.ci
+          set +a
+
+          if [ "${{ matrix.service }}" == "ecom-backend" ]; then
+            echo "MAIN_SERVICE_PORT=${ECOM_API_PORT}" >> "$GITHUB_ENV"
+
+          elif [ "${{ matrix.service }}" == "shopping-assistant" ]; then
+            echo "MAIN_SERVICE_PORT=${SHOPPING_ASSISTANT_PORT}" >> "$GITHUB_ENV"
+          fi
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Set up Python
+        run: uv python install "${{ needs.setup.outputs.PYTHON_VERSION }}"
+
+      - name: Pre Setup
+        if: matrix.service == 'ecom-backend'
+        run: |
+          # Setup venv and sync all dependencies matching uv.lock
+          cd "${{ github.workspace }}"/services/ecom-backend
+          uv sync --no-dev
+
+          # Delete and create data directory (so that runner owns it and not root)
+          rm -rf data
+          mkdir -p data
+
+          ls -l
+          ls -l data
+
+          # Create DB
+          uv run alembic upgrade head
+
+          # Ingest product data
+          uv run scripts/ingest_product_data.py --reset-db --db-url sqlite:///data/${{ env.ECOM_BACKEND_DB_NAME }}.db --data-file products_extended.csv --data-dir "${{ github.workspace }}/data"
+          
+          # Create admin user
+          uv run scripts/create_admin_user.py --default --db-url sqlite:///data/${{ env.ECOM_BACKEND_DB_NAME }}.db
+
+      - name: Health check
+        run: |
+
+          # Start the service
+          make app-prod CI=true SERVICES="${{ matrix.service }}"
+
+          start=$(date +%s)
+          until curl -s "http://localhost:${MAIN_SERVICE_PORT}/health" > /dev/null 2>&1; do
+            now=$(date +%s)
+            if [ "$((now - start))" -gt 60 ]; then
+              echo "Timeout waiting for health check"
+              exit 1
+            fi
+            echo "Waiting for health check..."
+            sleep 0.1
+          done
+
+          echo "Health check passed"
+
+      - name: API tests
+        if: matrix.service == 'ecom-backend'
+        run: |
+          echo "Running API tests for ${{ matrix.service }}"
+          bash services/ecom-backend/tests/api/test_users_api.sh "${MAIN_SERVICE_PORT}"
+          bash services/ecom-backend/tests/api/test_carts_api.sh "${MAIN_SERVICE_PORT}"
+          bash services/ecom-backend/tests/api/test_products_api.sh "${MAIN_SERVICE_PORT}"
+
+      - name: Retag and push cache image
+        run: |
+          echo "Retagging and pushing cache image for ${{ matrix.service }}"
+          docker tag "${{ env.IMAGE_PUSH_URI }}" "${{ env.IMAGE_CACHE_URI }}"
+          docker push "${{ env.IMAGE_CACHE_URI }}"
+
+
+          
+  final_status:
+    runs-on: ubuntu-latest
+    needs: [test_packages, build_services]
+    if: always()
+    steps:
+      - name: Check for any failures
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped')
+        run: |
+          echo "One or more jobs failed or were cancelled."
+          exit 1

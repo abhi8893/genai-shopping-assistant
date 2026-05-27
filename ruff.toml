@@ -1,0 +1,84 @@
+exclude = [
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".mypy_cache",
+    ".pytype",
+    ".ruff_cache",
+    "__pypackages__",
+    "_build",
+    "build",
+    "dist",
+    "tools",
+    ".github",
+
+    # Tests (# TODO: Revisit)
+    "test_*.py",
+    "conftest.py",
+]
+target-version = "py312"
+indent-width = 4
+
+[format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[lint.per-file-ignores]
+"__init__.py" = [ "F401" ]
+
+[lint]
+
+# TODO: Add a custom list later
+select = [
+    "A", # builtin-variable-shadowing
+    "ARG", # flake8-unused-arguments
+    "B", # flake8-bugbear
+    "C", # flake8-comprehensions
+    "E", # pycodestyle errors
+    "F", # pyflakes
+    "FLY", # flynt
+    "G", # flake8-logging-format
+    "I", # isort
+    "N", # pep8-naming
+    "PGH", # pygrep-hooks
+    "PL", # pylint
+    "RET", # flake8-return
+    "SIM", # flake8-simplify
+    "SLF", # flake8-self
+    "UP", # pyupgrade
+    "W", # pycodestyle warnings
+]
+ignore = [
+    # TODO: Ignoring docstring issues for now
+    "D", # pydocstyle
+    "SIM108", # ternary operator
+    "RET504", # unnecessary-assignment-before-return
+
+]
+
+fixable = [
+    "ALL", # Allow fix for all enabled rules (when `--fix`) is provided.
+]
+unfixable = [  ]
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$" # Allow unused variables when underscore-prefixed.
+
+[lint.pycodestyle]
+max-doc-length = 88
+max-line-length = 88
+
+[lint.mccabe]
+max-complexity = 10
+
+[lint.pydocstyle]
+convention = "google"
+
+[lint.flake8-bugbear]
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Query",
+    "fastapi.Path",
+    "fastapi.Header",
+    "fastapi.Cookie",
+]
