@@ -200,7 +200,7 @@ wheels = [
 
 [[package]]
 name = "project"
-version = "0.1.0rc0"
+version = "0.1.0"
 source = { directory = "packages/project" }
 dependencies = [
     { name = "click" },
@@ -327,7 +327,7 @@ wheels = [
 
 [[package]]
 name = "shopping-assistant-monorepo"
-version = "0.1.0rc0"
+version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "project" },
