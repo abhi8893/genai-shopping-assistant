@@ -6,6 +6,8 @@ PYTHON_VERSION ?= 3.12
 export DOCKER_BUILDKIT=1
 export REPO_ROOT
 
+CMD ?= up -d
+
 APP_COMPOSE=platform/app/docker-compose.yml
 APP_COMPOSE_DEV=platform/app/docker-compose.dev.yml
 LANGFUSE_COMPOSE=platform/observability/docker-compose.langfuse.yml
@@ -21,7 +23,7 @@ langfuse-dev:
 	docker compose \
 		-p langfuse-dev \
 		-f $(LANGFUSE_COMPOSE) \
-		up -d
+		$(CMD)
 
 langfuse-prod:
 	set -a; \
@@ -30,7 +32,7 @@ langfuse-prod:
 	docker compose \
 		-p langfuse-prod \
 		-f $(LANGFUSE_COMPOSE) \
-		up -d
+		$(CMD)
 
 
 # Example usage: make app-dev SERVICES=shopping-assistant,ecom-backend
@@ -44,7 +46,7 @@ app-dev:
 		-p app-dev \
 		-f $(APP_COMPOSE) \
 		-f $(APP_COMPOSE_DEV) \
-		up -d $(SERVICES_NORMALIZED)
+		$(CMD) $(SERVICES_NORMALIZED)
 
 app-prod:
 	set -a; \
@@ -59,11 +61,16 @@ app-prod:
 			-p app-prod \
 			-f $(APP_COMPOSE) \
 			build --pull missing $(SERVICES_NORMALIZED); \
-	else \
+	elif [ "$(CMD)" = "up -d" ]; then \
 		docker compose \
 			-p app-prod \
 			-f $(APP_COMPOSE) \
 			up -d --pull missing $(SERVICES_NORMALIZED); \
+	else \
+		docker compose \
+			-p app-prod \
+			-f $(APP_COMPOSE) \
+			$(CMD) $(SERVICES_NORMALIZED); \
 	fi
 
 local-run-dev:
@@ -164,3 +171,25 @@ setup-project-cli:
 
 	@echo ""
 	@echo "Run 'source .venv/bin/activate' to use 'project' commands natively"
+
+
+# Down shortcuts for ease of use
+.PHONY: langfuse-dev-down langfuse-prod-down app-dev-down app-prod-down local-run-dev-down local-run-prod-down
+
+langfuse-dev-down:
+	$(MAKE) langfuse-dev CMD=down
+
+langfuse-prod-down:
+	$(MAKE) langfuse-prod CMD=down
+
+app-dev-down:
+	$(MAKE) app-dev CMD=down
+
+app-prod-down:
+	$(MAKE) app-prod CMD=down
+
+local-run-dev-down:
+	$(MAKE) local-run-dev CMD=down
+
+local-run-prod-down:
+	$(MAKE) local-run-prod CMD=down

@@ -229,10 +229,14 @@ project venv switch --all --target {env} --include-root
 ```
 
 ### Step 5: Clean Docker State
-If performing a fresh clean start, tear down existing docker containers and remove their volume mounts:
+If performing a fresh clean start, tear down existing docker containers and remove their volume mounts using the unified `Makefile` commands:
 ```bash
-docker compose -f platform/app/docker-compose.yml -p app-{env} down -v
-docker compose -f platform/observability/docker-compose.langfuse.yml -p langfuse-{env} down -v
+# Tear down all stacks (app + telemetry) and their volume mounts simultaneously
+make local-run-{env} CMD="down -v"
+
+# Or tear down specific components individually
+make app-{env} CMD="down -v"
+make langfuse-{env} CMD="down -v"
 ```
 
 ### Step 6: Delete Dangling Docker Images
