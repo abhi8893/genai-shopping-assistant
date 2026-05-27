@@ -324,186 +324,7 @@ make app-{env} SERVICES=shopping-assistant
 
 ---
 
-## 5. Repository Structure
-
-```
-genai-shopping-assistant/
-├── packages/
-│   └── shopping-assistant/           # Core multi-agent LLM package
-│       ├── src/shopping_assistant/   # Agent definitions, graph, tools, config
-│       ├── pyproject.toml
-│       └── README.md
-│
-├── services/
-│   ├── shopping-assistant/           # Core service: FastAPI app wrapping the package
-│   │   ├── app.py
-│   │   ├── Dockerfile
-│   │   ├── pyproject.toml
-│   │   └── README.md
-│   ├── ecom-backend/                 # Auxiliary service: e-commerce API (products, carts, users)
-│   │   ├── app.py
-│   │   ├── Dockerfile
-│   │   ├── domains/
-│   │   ├── pyproject.toml
-│   │   └── README.md
-│   └── product-retriever/            # Auxiliary service: vector search (placeholder)
-│
-├── platform/
-│   ├── app/                          # App stack deployment
-│   │   ├── docker-compose.yml        # Base (prod) compose
-│   │   ├── docker-compose.dev.yml    # Dev overlay (volume mounts, dev targets)
-│   │   ├── .env.example
-│   │   └── .env.dev.example
-│   └── observability/                # Langfuse observability stack
-│       ├── docker-compose.langfuse.yml
-│       ├── .env.example
-│       └── .env.dev.example
-│
-├── data/                             # Product datasets (CSV)
-├── notebooks/                        # Jupyter notebooks (PoC, misc)
-├── scripts/                          # Monorepo tooling (venv management, direnv)
-├── playground/                       # Ad-hoc exploration scripts
-├── Makefile
-└── CLAUDE.md
-```
-
----
-
-## 6. Architecture
-
-The `shopping-assistant` service exposes a `POST /chat` endpoint that drives the multi-agent LangGraph pipeline.
-
-```mermaid
-graph TD
-    Client(["HTTP Client"])
-
-    subgraph SVC["shopping-assistant service"]
-        API["POST /chat"]
-        START(["START"])
-        END(["END"])
-
-        API --> START
-        START -->|"conditional edge"| Router
-
-        subgraph Router["RouterAgent"]
-            R["Classify intent"]
-        end
-
-        Router -->|product_search| PS
-        Router -->|shopping_actions| SA
-        Router -->|customer_service| CS
-
-        subgraph PS["ProductSearchAgent"]
-            PS1["Parse query + semantic search"]
-        end
-
-        subgraph SA["ShoppingActionsAgent"]
-            SA1["Cart operations via tools"]
-        end
-
-        subgraph CS["CustomerServiceAgent"]
-            CS1["General support & FAQ"]
-        end
-
-        PS --> END
-        SA --> END
-        CS --> END
-    end
-
-    Client -->|"POST /chat"| API
-    END -->|"JSON response"| Client
-
-    PS1 <-->|"WeaviateConnectionManager"| Weaviate[("Weaviate<br>vector DB")]
-    SA1 <-->|"EcomAPIClient"| EcomAPI[("Ecom<br>Backend API")]
-
-    subgraph Footer["LLM Observability Layer (Langfuse)"]
-    end
-```
-
----
-
-## 7. Components
-
-### `packages/shopping-assistant` — Core LLM Package
-
-The heart of the system. A Python package implementing the multi-agent LangGraph pipeline with four agents (`RouterAgent`, `ProductSearchAgent`, `ShoppingActionsAgent`, `CustomerServiceAgent`), the `Chat` high-level API, and `EcomAPIClient` for e-commerce operations.
-
-> See [`packages/shopping-assistant/README.md`](packages/shopping-assistant/README.md) for full documentation.
-
-### `services/shopping-assistant` — Core Service
-
-A FastAPI service that wraps the `shopping-assistant` package and exposes it as an HTTP API (`POST /chat`). Uses a multi-stage Dockerfile with `dev` and `prod` targets.
-
-> See [`services/shopping-assistant/README.md`](services/shopping-assistant/README.md) for full documentation.
-
-### `services/ecom-backend` — Auxiliary E-commerce API
-
-A FastAPI service providing product, cart, and user management backed by SQLite. Demonstrates how the GenAI Shopping Assistant integrates with an e-commerce backend.
-
-> **Note**: In the target architecture (v1.x+), this service will be replaceable with standard e-commerce platforms (Shopify, WooCommerce) via Bring-YOS integrations.
-
-> See [`services/ecom-backend/README.md`](services/ecom-backend/README.md) for full documentation.
-
-### Out-of-the-box Services
-
-| Service | Purpose | Image |
-|---|---|---|
-| [Weaviate](https://weaviate.io) | Vector database for semantic product search | `cr.weaviate.io/semitechnologies/weaviate` |
-| [Ollama](https://ollama.com) | Local LLM inference for Weaviate text embeddings (`text2vec-ollama`) | `ollama/ollama` |
-
----
-
-## 8. Observability
-
-The application uses [Langfuse](https://langfuse.com) to track LLM traces and [Logfire](https://logfire.dev) to track logs. These are optional but recommended for monitoring agent behaviour.
-
-| Variable | Description | Default |
-|---|---|---|
-| `LANGFUSE_PUBLIC_KEY` | Langfuse project public key | — |
-| `LANGFUSE_SECRET_KEY` | Langfuse project secret key | — |
-| `LANGFUSE_BASE_URL` | Langfuse server URL | `http://localhost:3000` |
-
-The Langfuse stack is self-hosted via `platform/observability/docker-compose.langfuse.yml` and includes:
-
-| Service | Description | Default Port |
-|---|---|---|
-| `langfuse-web` | Langfuse web UI | `3000` |
-| `langfuse-worker` | Async event processing worker | `3030` |
-| `postgres` | OLTP — transactional data | `5432` |
-| `clickhouse` | OLAP — observability data | `8123` |
-| `redis` | Cache and ingestion queue | `6379` |
-| `minio` | S3-compatible blob storage (raw events, media) | `9090` |
-
-```mermaid
-flowchart TB
-    User["UI, API, SDKs"]
-    subgraph vpc["VPC"]
-        Web["Web Server<br/>(langfuse/langfuse)"]
-        Worker["Async Worker<br/>(langfuse/worker)"]
-        Postgres@{label: "Postgres - OLTP\n(Transactional Data)", pos: "b", w: 60, h: 60, constraint: "on"}
-        Cache@{label: "Redis\n(Cache, Queue)", pos: "b", w: 60, h: 60, constraint: "on"}
-        Clickhouse@{label: "Clickhouse - OLAP\n(Observability Data)", pos: "b", w: 60, h: 60, constraint: "on"}
-        S3@{label: "S3 / Blob Storage\n(Raw events, multi-modal attachments)", pos: "b", w: 60, h: 60, constraint: "on"}
-    end
-    LLM["LLM API/Gateway<br/>(optional; BYO; can be same VPC or VPC-peered)"]
-
-    User --> Web
-    Web --> S3
-    Web --> Postgres
-    Web --> Cache
-    Web --> Clickhouse
-    Web -..->|"optional for playground"| LLM
-
-    Cache --> Worker
-    Worker --> Clickhouse
-    Worker --> Postgres
-    Worker --> S3
-    Worker -..->|"optional for evals"| LLM
-```
-
----
-
-## 9. Example Usage
+## 5. Example Usage
 
 Multi-turn conversation with `user_id=1`, `thread_id=1`, covering all four agents.
 
@@ -561,4 +382,183 @@ curl -X POST 'http://localhost:8010/chat' \
 {
     "response": "Customer Service Agent: Our return policy allows you to return most items within 30 days of receiving your order. Items must be unused, in their original packaging, and include all tags and labels. To initiate a return, visit the returns section of our website or contact customer service."
 }
+```
+
+---
+
+## 6. Repository Structure
+
+```
+genai-shopping-assistant/
+├── packages/
+│   └── shopping-assistant/           # Core multi-agent LLM package
+│       ├── src/shopping_assistant/   # Agent definitions, graph, tools, config
+│       ├── pyproject.toml
+│       └── README.md
+│
+├── services/
+│   ├── shopping-assistant/           # Core service: FastAPI app wrapping the package
+│   │   ├── app.py
+│   │   ├── Dockerfile
+│   │   ├── pyproject.toml
+│   │   └── README.md
+│   ├── ecom-backend/                 # Auxiliary service: e-commerce API (products, carts, users)
+│   │   ├── app.py
+│   │   ├── Dockerfile
+│   │   ├── domains/
+│   │   ├── pyproject.toml
+│   │   └── README.md
+│   └── product-retriever/            # Auxiliary service: vector search (placeholder)
+│
+├── platform/
+│   ├── app/                          # App stack deployment
+│   │   ├── docker-compose.yml        # Base (prod) compose
+│   │   ├── docker-compose.dev.yml    # Dev overlay (volume mounts, dev targets)
+│   │   ├── .env.example
+│   │   └── .env.dev.example
+│   └── observability/                # Langfuse observability stack
+│       ├── docker-compose.langfuse.yml
+│       ├── .env.example
+│       └── .env.dev.example
+│
+├── data/                             # Product datasets (CSV)
+├── notebooks/                        # Jupyter notebooks (PoC, misc)
+├── scripts/                          # Monorepo tooling (venv management, direnv)
+├── playground/                       # Ad-hoc exploration scripts
+├── Makefile
+└── CLAUDE.md
+```
+
+---
+
+## 7. Architecture
+
+The `shopping-assistant` service exposes a `POST /chat` endpoint that drives the multi-agent LangGraph pipeline.
+
+```mermaid
+graph TD
+    Client(["HTTP Client"])
+
+    subgraph SVC["shopping-assistant service"]
+        API["POST /chat"]
+        START(["START"])
+        END(["END"])
+
+        API --> START
+        START -->|"conditional edge"| Router
+
+        subgraph Router["RouterAgent"]
+            R["Classify intent"]
+        end
+
+        Router -->|product_search| PS
+        Router -->|shopping_actions| SA
+        Router -->|customer_service| CS
+
+        subgraph PS["ProductSearchAgent"]
+            PS1["Parse query + semantic search"]
+        end
+
+        subgraph SA["ShoppingActionsAgent"]
+            SA1["Cart operations via tools"]
+        end
+
+        subgraph CS["CustomerServiceAgent"]
+            CS1["General support & FAQ"]
+        end
+
+        PS --> END
+        SA --> END
+        CS --> END
+    end
+
+    Client -->|"POST /chat"| API
+    END -->|"JSON response"| Client
+
+    PS1 <-->|"WeaviateConnectionManager"| Weaviate[("Weaviate<br>vector DB")]
+    SA1 <-->|"EcomAPIClient"| EcomAPI[("Ecom<br>Backend API")]
+
+    subgraph Footer["LLM Observability Layer (Langfuse)"]
+    end
+```
+
+---
+
+## 8. Components
+
+### `packages/shopping-assistant` — Core LLM Package
+
+The heart of the system. A Python package implementing the multi-agent LangGraph pipeline with four agents (`RouterAgent`, `ProductSearchAgent`, `ShoppingActionsAgent`, `CustomerServiceAgent`), the `Chat` high-level API, and `EcomAPIClient` for e-commerce operations.
+
+> See [`packages/shopping-assistant/README.md`](packages/shopping-assistant/README.md) for full documentation.
+
+### `services/shopping-assistant` — Core Service
+
+A FastAPI service that wraps the `shopping-assistant` package and exposes it as an HTTP API (`POST /chat`). Uses a multi-stage Dockerfile with `dev` and `prod` targets.
+
+> See [`services/shopping-assistant/README.md`](services/shopping-assistant/README.md) for full documentation.
+
+### `services/ecom-backend` — Auxiliary E-commerce API
+
+A FastAPI service providing product, cart, and user management backed by SQLite. Demonstrates how the GenAI Shopping Assistant integrates with an e-commerce backend.
+
+> **Note**: In the target architecture (v1.x+), this service will be replaceable with standard e-commerce platforms (Shopify, WooCommerce) via Bring-YOS integrations.
+
+> See [`services/ecom-backend/README.md`](services/ecom-backend/README.md) for full documentation.
+
+### Out-of-the-box Services
+
+| Service | Purpose | Image |
+|---|---|---|
+| [Weaviate](https://weaviate.io) | Vector database for semantic product search | `cr.weaviate.io/semitechnologies/weaviate` |
+| [Ollama](https://ollama.com) | Local LLM inference for Weaviate text embeddings (`text2vec-ollama`) | `ollama/ollama` |
+
+---
+
+## 9. Observability
+
+The application uses [Langfuse](https://langfuse.com) to track LLM traces and [Logfire](https://logfire.dev) to track logs. These are optional but recommended for monitoring agent behaviour.
+
+| Variable | Description | Default |
+|---|---|---|
+| `LANGFUSE_PUBLIC_KEY` | Langfuse project public key | — |
+| `LANGFUSE_SECRET_KEY` | Langfuse project secret key | — |
+| `LANGFUSE_BASE_URL` | Langfuse server URL | `http://localhost:3000` |
+
+The Langfuse stack is self-hosted via `platform/observability/docker-compose.langfuse.yml` and includes:
+
+| Service | Description | Default Port |
+|---|---|---|
+| `langfuse-web` | Langfuse web UI | `3000` |
+| `langfuse-worker` | Async event processing worker | `3030` |
+| `postgres` | OLTP — transactional data | `5432` |
+| `clickhouse` | OLAP — observability data | `8123` |
+| `redis` | Cache and ingestion queue | `6379` |
+| `minio` | S3-compatible blob storage (raw events, media) | `9090` |
+
+```mermaid
+flowchart TB
+    User["UI, API, SDKs"]
+    subgraph vpc["VPC"]
+        Web["Web Server<br/>(langfuse/langfuse)"]
+        Worker["Async Worker<br/>(langfuse/worker)"]
+        Postgres@{label: "Postgres - OLTP\n(Transactional Data)", pos: "b", w: 60, h: 60, constraint: "on"}
+        Cache@{label: "Redis\n(Cache, Queue)", pos: "b", w: 60, h: 60, constraint: "on"}
+        Clickhouse@{label: "Clickhouse - OLAP\n(Observability Data)", pos: "b", w: 60, h: 60, constraint: "on"}
+        S3@{label: "S3 / Blob Storage\n(Raw events, multi-modal attachments)", pos: "b", w: 60, h: 60, constraint: "on"}
+    end
+    LLM["LLM API/Gateway<br/>(optional; BYO; can be same VPC or VPC-peered)"]
+
+    User --> Web
+    Web --> S3
+    Web --> Postgres
+    Web --> Cache
+    Web --> Clickhouse
+    Web -..->|"optional for playground"| LLM
+
+    Cache --> Worker
+    Worker --> Clickhouse
+    Worker --> Postgres
+    Worker --> S3
+    Worker -..->|"optional for evals"| LLM
 ```
