@@ -71,6 +71,7 @@ jobs:
         if: steps.check_release.outputs.should_run == 'true'
         id: changelog
         run: |
+          source .venv/bin/activate
           LATEST_TAG=$(project version latest)
           echo "Latest tag: $LATEST_TAG"
           
