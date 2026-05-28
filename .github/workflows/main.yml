@@ -97,7 +97,7 @@ jobs:
 
           echo "Current version: $VERSION"
 
-          LATEST_TAG=$(git tag -l 'v[0-9]*' | sort -V | tail -n 1)
+          LATEST_TAG=$(project version latest)
           if [ -z "$LATEST_TAG" ]; then
             echo "✓ No existing tags — version $VERSION is valid for initial release"
           else

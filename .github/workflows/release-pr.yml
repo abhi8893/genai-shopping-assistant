@@ -71,7 +71,7 @@ jobs:
         if: steps.check_release.outputs.should_run == 'true'
         id: changelog
         run: |
-          LATEST_TAG=$(git tag -l 'v[0-9]*' | sort -V | tail -n 1)
+          LATEST_TAG=$(project version latest)
           echo "Latest tag: $LATEST_TAG"
           
           if [ -z "$LATEST_TAG" ]; then

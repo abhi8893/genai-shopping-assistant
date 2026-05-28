@@ -8,6 +8,7 @@ from project.core.version import (
     ALL_COMPONENTS,
     bump_versions,
     compare_versions,
+    get_latest_tag,
     get_release_info,
     get_version_info,
 )
@@ -27,6 +28,19 @@ def get():
         info = get_version_info(repo_root)
         click.echo(f"VERSION: {info.version}")
         click.echo(f"RELEASE_TYPE: {info.release_type}")
+    except Exception as e:
+        click.secho(f"Error: {e}", fg="red")
+        sys.exit(1)
+
+
+@version_cli.command()
+def latest():
+    """Get the latest semver tag from git."""
+    repo_root = get_repo_root()
+    try:
+        tag = get_latest_tag(repo_root)
+        if tag:
+            click.echo(tag)
     except Exception as e:
         click.secho(f"Error: {e}", fg="red")
         sys.exit(1)

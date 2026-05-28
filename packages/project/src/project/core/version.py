@@ -1,4 +1,5 @@
 import re
+import subprocess
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
@@ -388,3 +389,25 @@ def bump_versions(
             )
 
     return versions_components
+
+
+def get_latest_tag(repo_root: Path) -> str | None:
+    try:
+        result = subprocess.run(
+            ["git", "tag", "-l", "v[0-9]*"],
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except subprocess.CalledProcessError:
+        return None
+
+    tags = [
+        t.strip()[1:] for t in result.stdout.splitlines() if t.strip().startswith("v")
+    ]
+    if not tags:
+        return None
+
+    tags.sort(key=semver.Version.parse)
+    return f"v{tags[-1]}"
