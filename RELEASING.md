@@ -8,7 +8,7 @@ This document describes the release workflow for the GenAI Shopping Assistant mo
 - [Branch Model](#branch-model)
 - [Version Format](#version-format)
 - [Release Types](#release-types)
-  - [Dev Release](#-dev-release-from-develop)
+  - [Dev Release](#1️⃣-dev-release-from-main)
   - [Cutting a Release Branch](#-cutting-a-release-branch)
   - [RC Release](#-rc-release-from-releasevxyz)
   - [Stable Release](#-stable-release-from-main)
@@ -21,25 +21,37 @@ This document describes the release workflow for the GenAI Shopping Assistant mo
 
 ## Quick Overview
 
+### Option A: Automated Release PR (CI-driven)
+```
+main branch (dev version, e.g., 0.1.0-dev.5)
+    ↓
+Trigger: push/merge to main
+    ↓
+Automated Release PR opened (branch: release/next, bumps version to 0.1.0)
+    ↓
+Review and Merge Release PR to main
+    ↓
+Trigger: push/merge to main
+Tag: v0.1.0 (stable release, GitHub Release created)
+```
+
+### Option B: Manual Release Branch (Developer-driven)
 ```
 main branch
     ↓
-Trigger: workflow_dispatch
-Tag: v0.1.0-dev.1 (no GitHub release)
+Cut manual branch (branch: release/v0.1.0)
     ↓
-    └─→ Cut release/v0.1.0 branch
-            ↓
-        Trigger: workflow_dispatch (per RC)
-        Tag: v0.1.0-rc.0, v0.1.0-rc.1, ... (pre-release)
-            ↓
-        Fix bugs? → Bump rc.N, repeat
-            ↓
-main branch (via PR merge)
+Bump to RC version (0.1.0-rc.0)
     ↓
-Trigger: push to main (automatic)
+Trigger: workflow_dispatch (per RC)
+Tag: v0.1.0-rc.0, v0.1.0-rc.1, ... (pre-releases created)
+    ↓
+Fix bugs? → Bump rc.N, repeat
+    ↓
+Bump to stable (0.1.0) on release branch and PR to main
+    ↓
+Trigger: push to main (automatic via merge)
 Tag: v0.1.0 (stable release)
-    ↓
-Auto sync: PR main → develop, auto-merge, delete release branch
 ```
 
 ---
@@ -48,8 +60,9 @@ Auto sync: PR main → develop, auto-merge, delete release branch
 
 | Branch | Purpose | Release Type | Version Format | Who Creates |
 |--------|---------|--------------|----------------|-------------|
-| `release/vX.Y.Z` | Feature freeze, stabilization | rc | `X.Y.Z-rc.N` | release engineer |
-| `main` | Ongoing dev & Production-ready | dev / stable | `X.Y.Z-dev.N` / `X.Y.Z` | team / merge after RC approval |
+| `release/vX.Y.Z` | Feature freeze, stabilization (manual) | rc | `X.Y.Z-rc.N` | release engineer / developer |
+| `release/next` | Automated release staging | stable | `X.Y.Z` | CI (Release PR workflow) |
+| `main` | Ongoing dev & Production-ready | dev / stable | `X.Y.Z-dev.N` / `X.Y.Z` | team / CI automation |
 
 ---
 
@@ -378,7 +391,6 @@ Examples: 0.1.0-dev.0, 0.1.0-dev.1, 0.2.0-dev.0
 **Result**:
 - ✅ Git tag: `v0.1.0`
 - ✅ GitHub Release (stable, with release notes)
-- ✅ Auto-triggers sync job (see below)
 
 ---
 
@@ -441,13 +453,13 @@ Examples: 0.1.0-dev.0, 0.1.0-dev.1, 0.2.0-dev.0
 - **By default**: Runs `pytest -m "not slow"` (excludes slow tests)
 - **With `PACKAGES_RUN_ALL_TESTS` env var**: Runs all tests including slow ones
   - Set environment variable before pushing: `export PACKAGES_RUN_ALL_TESTS=true`
-  - Also enabled by default on `main`, `main`, and `fix/develop-ci-tests-bug` branches
+  - Also enabled by default on `main` and `fix/develop-ci-tests-bug` branches
 - Tests are run in a dedicated test venv (`.venv-test`)
 - **Fails if partial tests are run**: The job exits with code 1 if slow tests are skipped (PARTIAL), blocking the PR
 
 **Slow Test Marker**:
 Tests marked with `@pytest.mark.slow` are skipped on most branches by default, but included in:
-- Main workflow on `main`, `main`, and `fix/develop-ci-tests-bug` branches (always run all tests)
+- Main workflow on `main` and `fix/develop-ci-tests-bug` branches (always run all tests)
 - Release workflow (manual RC releases with `skip_slow_tests=FALSE`)
 - Release workflow (automated stable releases)
 
@@ -464,12 +476,11 @@ These artifacts are available for download in downstream workflows.
 | Job | Trigger | Purpose |
 |-----|---------|---------|
 | `check_upstream_workflow` | workflow_run (main) or workflow_dispatch | Verify upstream Main workflow succeeded, fetch run ID |
-| `setup` | all | Determine release type, validate version format |
+| `setup` | all | Determine release type, validate version format, check if release should be run |
 | `validate` | all | Check tag uniqueness, version ordering, CHANGELOG |
 | `test_packages` | all | Download built packages from upstream and run tests again |
 | `tag_and_release` | all | Download packages from upstream, create git tag, GitHub Release |
 | `retag_and_push_service_images` | all (conditional) | Pull service images from cache, retag with version/release tag, push to registry |
-| `sync_back` | stable only | Auto PR main→develop, auto-merge, delete release branch |
 
 **Testing in `test_packages` Job**:
 - Downloads built packages from upstream Main workflow
@@ -501,6 +512,14 @@ These artifacts are available for download in downstream workflows.
 - Can be skipped with `check_upstream_workflow=FALSE` for manual RC releases
   - Useful when: doing RC releases while slow tests are being skipped in main workflow
 - Ensures both package builds and service image builds are complete (if enabled)
+
+### Graceful Gating for Automated Triggers
+
+The Release workflow (`release.yml`) is automatically triggered on the completion of the Main workflow on the `main` branch. However, to prevent premature or unauthorized stable releases from dev/prerelease versions:
+
+- **Setup Job Gating**: The `setup` job executes a step to check the release type determined from the code version.
+- **Should Release Output**: If the workflow was auto-triggered via `workflow_run` on `main`, but the detected release type is **not** `stable` (e.g., it is a `dev` or `rc` release), the setup job outputs `should_release=false`.
+- **Job Gating**: All subsequent jobs (`validate`, `test_packages`, `retag_and_push_service_images`, and `tag_and_release`) are gated with `if: needs.setup.outputs.should_release == 'true'`. They will be gracefully skipped, ensuring no accidental tags or releases are generated on regular dev pushes.
 
 ### Package Build & Artifact Flow
 
@@ -628,19 +647,6 @@ def test_long_running_operation():
 - Version: `0.1.0-rc0` (base: `0.1.0`)
 - ✅ Match: `release/v0.1.0` + `0.1.0-rcN` → OK
 - ❌ Mismatch: `release/v0.1.0` + `0.2.0-rc0` → FAIL
-
-### Q: Auto-sync PR can't auto-merge (conflicts)
-**A**: `main` and `main` have diverged (unusual).
-- Manual merge required:
-  ```bash
-  git checkout main
-  git pull origin main
-  git merge main
-  # ... resolve conflicts ...
-  git push origin main
-  ```
-- Then manually delete release branch: `git push origin --delete release/vX.Y.Z`
-
 ### Q: Which file do I edit to bump version?
 **A**: All `pyproject.toml` files in the monorepo:
 - Root: `./pyproject.toml`
@@ -673,7 +679,7 @@ All must have the **same version** (unified releasing).
   export PACKAGES_RUN_ALL_TESTS=true
   git push origin <branch>
   ```
-- Or if you're on `main`, `main`, or `fix/develop-ci-tests-bug`, the tests should run automatically (all tests included)
+- Or if you're on `main` or `fix/develop-ci-tests-bug`, the tests should run automatically (all tests included)
 
 ### Q: Release workflow failed — "Upstream workflow status: failure"
 **A**: The Main workflow must pass before the Release workflow can proceed.
@@ -711,10 +717,10 @@ The workflow enforces these rules (cannot be bypassed):
 - ✅ Branch must be exactly `main`
 - ✅ Version format: `X.Y.Z-dev.N`
 
-### Release Branch (`release/vX.Y.Z` branch)
-- ✅ Branch must match `release/v*`
+### Release Branch (`release/vX.Y.Z` or `release/next` branch)
+- ✅ Branch must start with `release/`
 - ✅ Version format: `X.Y.Z-rc.N` (during RC) or `X.Y.Z` (stable, just before merging)
-- ✅ Base version (`X.Y.Z`) must match branch version
+- ✅ If branch starts with `release/v`, the base version (`X.Y.Z`) must match branch version
 - ✅ CHANGELOG entry required: `[vX.Y.Z-rc.N]` or `[vX.Y.Z]`
 
 ### Stable Release (`main` branch)
@@ -750,8 +756,8 @@ graph TD
         MW1["Code Quality Checks"]
         MW2["Validate Version"]
         MW3["Build Packages<br/>(matrix job)"]
-        MW3b["Build Service Images<br/>(matrix job, optional)<br/>SERVICES_BUILD_IMAGES env var<br/>Always on: develop/main<br/>Uses: Docker BuildKit + cache"]
-        MW4["Test Packages<br/>(matrix job, after build)<br/>Default: skip slow<br/>With PACKAGES_RUN_ALL_TESTS: all tests<br/>develop/main/fix/*: always all tests"]
+        MW3b["Build Service Images<br/>(matrix job, optional)<br/>SERVICES_BUILD_IMAGES env var<br/>Always on: main<br/>Uses: Docker BuildKit + cache"]
+        MW4["Test Packages<br/>(matrix job, after build)<br/>Default: skip slow<br/>With PACKAGES_RUN_ALL_TESTS: all tests<br/>main/fix/*: always all tests"]
         MW5["Upload Artifacts<br/>all-packages-{version}"]
         MW6["final_status Gate<br/>(fails if test_packages<br/>had partial test runs)"]
         MW1 --> MW2 --> MW3
@@ -776,23 +782,14 @@ graph TD
         R7 --> R7b
     end
 
-    subgraph sync["🔄 Sync Back"]
-        S1["Auto: PR main → develop"]
-        S2["Auto: merge if no conflicts"]
-        S3["Auto: delete release/vX.Y.Z"]
-        S1 --> S2 --> S3
-    end
-
     D3 -->|push commit + Main workflow| MW1
     R3 -->|push commit + Main workflow| MW1
     M4 -->|Main workflow completed| MW1
     MW6 -->|Artifacts ready| R5
-    R7 --> S1
 
     style D1 fill:#e3f2fd
     style R1 fill:#fff3e0
     style M1 fill:#e8f5e9
-    style S1 fill:#f3e5f5
     style MW1 fill:#f0f4f8
     style release_workflow fill:#fce4ec
 ```
@@ -806,6 +803,5 @@ graph TD
 | Development | `main` | `X.Y.Z-dev.N` | Manual | ❌ No | ✅ Build & Push (with ENV) |
 | Stabilization | `release/vX.Y.Z` | `X.Y.Z-rc.N` | Manual | ✅ Pre-release | ✅ Build & Push RC (with ENV) |
 | Production | `main` | `X.Y.Z` | Auto (push) | ✅ Stable | ✅ Build & Push stable + latest (with ENV) |
-| Sync | (auto) | (auto) | Auto | (auto) | (auto) |
 
 For questions or issues, refer to [Troubleshooting](#troubleshooting) or check `.github/workflows/release.yml` for implementation details.
