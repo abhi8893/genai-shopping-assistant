@@ -2599,7 +2599,7 @@ wheels = [
 
 [[package]]
 name = "shopping-assistant"
-version = "0.1.0"
+version = "0.1.1.dev0"
 source = { directory = "../../packages/shopping-assistant" }
 dependencies = [
     { name = "click" },
@@ -2646,7 +2646,7 @@ test = [
 
 [[package]]
 name = "shopping-assistant-service"
-version = "0.1.0"
+version = "0.1.1.dev0"
 source = { editable = "." }
 dependencies = [
     { name = "python-dotenv" },

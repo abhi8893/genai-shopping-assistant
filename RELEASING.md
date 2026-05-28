@@ -12,7 +12,7 @@ This document describes the release workflow for the GenAI Shopping Assistant mo
   - [Cutting a Release Branch](#-cutting-a-release-branch)
   - [RC Release](#-rc-release-from-releasevxyz)
   - [Stable Release](#-stable-release-from-main)
-  - [Post-Release Sync](#-post-release-sync-automatic)
+  - [Automated Release PRs](#-automated-release-prs-from-main)
 - [CI/CD Integration](#cicd-integration)
 - [Troubleshooting](#troubleshooting)
 - [Validation Rules](#validation-rules)
@@ -22,7 +22,7 @@ This document describes the release workflow for the GenAI Shopping Assistant mo
 ## Quick Overview
 
 ```
-develop branch
+main branch
     ↓
 Trigger: workflow_dispatch
 Tag: v0.1.0-dev.1 (no GitHub release)
@@ -48,9 +48,8 @@ Auto sync: PR main → develop, auto-merge, delete release branch
 
 | Branch | Purpose | Release Type | Version Format | Who Creates |
 |--------|---------|--------------|----------------|-------------|
-| `develop` | Ongoing development | dev | `X.Y.Z-dev.N` | team |
 | `release/vX.Y.Z` | Feature freeze, stabilization | rc | `X.Y.Z-rc.N` | release engineer |
-| `main` | Production-ready | stable | `X.Y.Z` | merge after RC approval |
+| `main` | Ongoing dev & Production-ready | dev / stable | `X.Y.Z-dev.N` / `X.Y.Z` | team / merge after RC approval |
 
 ---
 
@@ -151,11 +150,11 @@ Examples: 0.1.0-dev.0, 0.1.0-dev.1, 0.2.0-dev.0
 
 ## Release Types
 
-### 1️⃣ Dev Release (from `develop`)
+### 1️⃣ Dev Release (from `main`)
 
 **When to use**: Release a development snapshot for testing/CI purposes.
 
-**Trigger**: Manual (`workflow_dispatch`) on `develop` branch
+**Trigger**: Manual (`workflow_dispatch`) on `main` branch
 
 **Steps**:
 
@@ -180,7 +179,7 @@ Examples: 0.1.0-dev.0, 0.1.0-dev.1, 0.2.0-dev.0
 
 4. **Trigger release workflow**:
    - Go to **Actions** → **Release** → **Run workflow**
-   - Select branch: `develop`
+   - Select branch: `main`
    - Workflow will:
      - Validate version format (`X.Y.Z-dev.N`)
      - Create git tag `v0.1.0-dev.1`
@@ -200,10 +199,10 @@ Examples: 0.1.0-dev.0, 0.1.0-dev.1, 0.2.0-dev.0
 
 **Manual steps** (no automation):
 
-1. **Ensure `develop` is up-to-date**:
+1. **Ensure `main` is up-to-date**:
    ```bash
-   git checkout develop
-   git pull origin develop
+   git checkout main
+   git pull origin main
    ```
 
 2. **Create release branch**:
@@ -383,37 +382,27 @@ Examples: 0.1.0-dev.0, 0.1.0-dev.1, 0.2.0-dev.0
 
 ---
 
-### 5️⃣ Post-Release Sync (Automatic)
+### 5️⃣ Automated Release PRs (from `main`)
 
-**When**: Automatically triggered after stable release on `main`
+**When**: Automatically triggered on pushes to `main` that are not already tagged as a release.
 
 **What happens**:
 
-1. **Auto creates PR**: `main` → `develop`
-   - Title: `chore: sync main → develop after v0.1.0 stable release`
-   - Body: Auto-generated
+1. **Checks Version & Tags**:
+   - The workflow `.github/workflows/release-pr.yml` verifies if the current version is a `dev` release.
 
-2. **Auto-merges PR** (if no conflicts):
-   - Merge strategy: **normal merge commit** (not rebase, not squash)
-   - If conflicts exist: PR remains open for manual resolution
+2. **Generates Release Payload**:
+   - It automatically bumps the version to `stable` (`--part stable`).
+   - It generates a `CHANGELOG.md` payload with all commits since the last release tag.
+   - It updates all lockfiles.
 
-3. **Deletes release branch**:
-   - Deletes `release/v0.1.0`
-   - Keeps `main` and `develop` branches
+3. **Creates PR**:
+   - Opens an automated PR (e.g. `release/next` → `main`) titled `Release vX.Y.Z`.
+   - The PR body contains the generated changelog which can be manually refined before merging.
 
-**Manual action if needed**:
-```bash
-# If auto-merge failed due to conflicts
-git checkout develop
-git pull origin develop
-# ... resolve conflicts ...
-git add <files>
-git commit -m "chore: resolve release sync conflicts"
-git push origin develop
-
-# After manual sync, manually delete release branch
-git push origin --delete release/v0.1.0
-```
+**Result**:
+- ✅ Automated Release PR is opened.
+- ✅ Once merged into `main`, the stable release is automatically tagged and published by the main release workflow.
 
 ---
 
@@ -436,7 +425,7 @@ git push origin --delete release/v0.1.0
 **Service Image Builds in `build_services` Job**:
 - Builds Docker container images for services using Docker BuildKit
 - **Conditional**: Controlled via environment variable `SERVICES_BUILD_IMAGES`
-  - Always enabled on `develop` and `main` branches
+  - Always enabled on `main` and `main` branches
   - Optional on feature branches (disabled by default)
 - **Build features**:
   - Docker BuildKit support with inline cache (`BUILDKIT_INLINE_CACHE=1`)
@@ -452,13 +441,13 @@ git push origin --delete release/v0.1.0
 - **By default**: Runs `pytest -m "not slow"` (excludes slow tests)
 - **With `PACKAGES_RUN_ALL_TESTS` env var**: Runs all tests including slow ones
   - Set environment variable before pushing: `export PACKAGES_RUN_ALL_TESTS=true`
-  - Also enabled by default on `develop`, `main`, and `fix/develop-ci-tests-bug` branches
+  - Also enabled by default on `main`, `main`, and `fix/develop-ci-tests-bug` branches
 - Tests are run in a dedicated test venv (`.venv-test`)
 - **Fails if partial tests are run**: The job exits with code 1 if slow tests are skipped (PARTIAL), blocking the PR
 
 **Slow Test Marker**:
 Tests marked with `@pytest.mark.slow` are skipped on most branches by default, but included in:
-- Main workflow on `develop`, `main`, and `fix/develop-ci-tests-bug` branches (always run all tests)
+- Main workflow on `main`, `main`, and `fix/develop-ci-tests-bug` branches (always run all tests)
 - Release workflow (manual RC releases with `skip_slow_tests=FALSE`)
 - Release workflow (automated stable releases)
 
@@ -641,14 +630,14 @@ def test_long_running_operation():
 - ❌ Mismatch: `release/v0.1.0` + `0.2.0-rc0` → FAIL
 
 ### Q: Auto-sync PR can't auto-merge (conflicts)
-**A**: `develop` and `main` have diverged (unusual).
+**A**: `main` and `main` have diverged (unusual).
 - Manual merge required:
   ```bash
-  git checkout develop
-  git pull origin develop
+  git checkout main
+  git pull origin main
   git merge main
   # ... resolve conflicts ...
-  git push origin develop
+  git push origin main
   ```
 - Then manually delete release branch: `git push origin --delete release/vX.Y.Z`
 
@@ -684,7 +673,7 @@ All must have the **same version** (unified releasing).
   export PACKAGES_RUN_ALL_TESTS=true
   git push origin <branch>
   ```
-- Or if you're on `develop`, `main`, or `fix/develop-ci-tests-bug`, the tests should run automatically (all tests included)
+- Or if you're on `main`, `main`, or `fix/develop-ci-tests-bug`, the tests should run automatically (all tests included)
 
 ### Q: Release workflow failed — "Upstream workflow status: failure"
 **A**: The Main workflow must pass before the Release workflow can proceed.
@@ -718,15 +707,15 @@ The workflow enforces these rules (cannot be bypassed):
 - ✅ No duplicate tags allowed
 - ✅ Version in `pyproject.toml` must match the release type
 
-### Dev Release (`develop` branch)
-- ✅ Branch must be exactly `develop`
+### Dev Release (`main` branch)
+- ✅ Branch must be exactly `main`
 - ✅ Version format: `X.Y.Z-dev.N`
 
-### RC Release (`release/vX.Y.Z` branch)
+### Release Branch (`release/vX.Y.Z` branch)
 - ✅ Branch must match `release/v*`
-- ✅ Version format: `X.Y.Z-rc.N`
+- ✅ Version format: `X.Y.Z-rc.N` (during RC) or `X.Y.Z` (stable, just before merging)
 - ✅ Base version (`X.Y.Z`) must match branch version
-- ✅ CHANGELOG entry required: `[v0.1.0-rc.N]`
+- ✅ CHANGELOG entry required: `[vX.Y.Z-rc.N]` or `[vX.Y.Z]`
 
 ### Stable Release (`main` branch)
 - ✅ Branch must be exactly `main`
@@ -739,11 +728,12 @@ The workflow enforces these rules (cannot be bypassed):
 
 ```mermaid
 graph TD
-    subgraph develop["🔵 Develop Branch"]
-        D1["develop<br/>(ongoing development)"]
-        D2["Version: X.Y.Z-devN<br/>(manual edit)"]
-        D3["Commit with or without<br/>[include-slow-tests]"]
-        D1 --> D2 --> D3
+    subgraph main_dev["🔵 Main Branch (Dev)"]
+        D1["main<br/>(ongoing development)"]
+        D2["Version: X.Y.Z-dev.N<br/>(bump via cli)"]
+        D3["Push to main"]
+        D4["Auto Release PR<br/>(release/next)"]
+        D1 --> D2 --> D3 --> D4
     end
 
     subgraph release["🟡 Release Branch"]
@@ -813,7 +803,7 @@ graph TD
 
 | Phase | Branch | Version | Trigger | GitHub Release | Service Images |
 |-------|--------|---------|---------|-----------------|---|
-| Development | `develop` | `X.Y.Z-dev.N` | Manual | ❌ No | ✅ Build & Push (with ENV) |
+| Development | `main` | `X.Y.Z-dev.N` | Manual | ❌ No | ✅ Build & Push (with ENV) |
 | Stabilization | `release/vX.Y.Z` | `X.Y.Z-rc.N` | Manual | ✅ Pre-release | ✅ Build & Push RC (with ENV) |
 | Production | `main` | `X.Y.Z` | Auto (push) | ✅ Stable | ✅ Build & Push stable + latest (with ENV) |
 | Sync | (auto) | (auto) | Auto | (auto) | (auto) |

@@ -5,7 +5,7 @@ name: Release
 #   - workflow_dispatch   → dev (from develop) or rc (from release/vX.Y.Z)
 #
 # Release types and version formats:
-#   dev    (develop branch):         X.Y.Z-devN    e.g. 0.1.0-dev1
+#   dev    (main branch):            X.Y.Z-devN    e.g. 0.1.0-dev1
 #   rc     (release/vX.Y.Z branch):  X.Y.Z-rcN     e.g. 0.1.0-rc0
 #   stable (main branch):            X.Y.Z          e.g. 0.1.0
 
@@ -421,58 +421,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  sync_back:
-    name: Sync main → develop
-    runs-on: ubuntu-latest
-    needs: [setup, tag_and_release]
-    if: needs.setup.outputs.release_type == 'stable'
-    permissions:
-      contents: write
-      pull-requests: write
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
 
-      - name: Create PR main → develop
-        id: create_pr
-        env:
-          GH_TOKEN: ${{ secrets.GENAI_SHOP_ASST_REPO_PR_PAT }}
-        run: |
-          VERSION="${{ needs.setup.outputs.version }}"
-
-          # Check if a PR from main → develop already exists
-          EXISTING_PR=$(gh pr list \
-            --base develop --head main \
-            --json url --jq '.[0].url' 2>/dev/null || true)
-
-          if [ -n "$EXISTING_PR" ]; then
-            echo "PR already exists: $EXISTING_PR"
-            echo "pr_url=$EXISTING_PR" >> "$GITHUB_OUTPUT"
-          else
-            PR_URL=$(gh pr create \
-              --base develop \
-              --head main \
-              --title "chore: sync main → develop after v${VERSION} stable release" \
-              --body "Auto-generated PR to sync main back to develop after stable release v${VERSION}.")
-            echo "✓ Created PR: $PR_URL"
-            echo "pr_url=$PR_URL" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Auto-merge PR
-        env:
-          GH_TOKEN: ${{ secrets.GENAI_SHOP_ASST_REPO_PR_PAT }}
-        run: |
-          gh pr merge "${{ steps.create_pr.outputs.pr_url }}" \
-            --merge --auto
-          echo "✓ Auto-merge enabled on PR"
-
-      - name: Delete release branch
-        env:
-          GH_TOKEN: ${{ secrets.GENAI_SHOP_ASST_REPO_PR_PAT }}
-        run: |
-          VERSION="${{ needs.setup.outputs.version }}"
-          RELEASE_BRANCH="release/v${VERSION}"
-          gh api --method DELETE \
-            "repos/${{ github.repository }}/git/refs/heads/${RELEASE_BRANCH}" \
-            && echo "✓ Deleted branch ${RELEASE_BRANCH}" \
-            || echo "⚠ Branch ${RELEASE_BRANCH} not found or already deleted"

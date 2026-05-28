@@ -1,0 +1,127 @@
+name: Release PR
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release-pr:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Set up Python
+        run: uv python install "3.12"
+
+      - name: Setup project cli
+        run: |
+          make setup-project-cli
+
+      - name: Determine if release PR is needed
+        id: check_release
+        run: |
+          source .venv/bin/activate
+          # Check current release type
+          OUTPUT=$(project version get)
+          RELEASE_TYPE=$(echo "$OUTPUT" | grep '^RELEASE_TYPE:' | cut -d: -f2- | tr -d ' ')
+          VERSION=$(echo "$OUTPUT" | grep '^VERSION:' | cut -d: -f2- | tr -d ' ')
+          
+          echo "Current Version: $VERSION"
+          echo "Current Release Type: $RELEASE_TYPE"
+          
+          # Also check if HEAD has a tag
+          TAGS=$(git tag --points-at HEAD)
+          
+          if [[ "$RELEASE_TYPE" != "dev" ]]; then
+             echo "Version is not a dev version. Skipping release PR."
+             echo "should_run=false" >> "$GITHUB_OUTPUT"
+          elif [[ -n "$TAGS" ]]; then
+             echo "Commit is already tagged: $TAGS. Skipping release PR."
+             echo "should_run=false" >> "$GITHUB_OUTPUT"
+          else
+             echo "should_run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Bump version to stable
+        if: steps.check_release.outputs.should_run == 'true'
+        run: |
+          source .venv/bin/activate
+          project version bump --part stable
+          NEW_OUTPUT=$(project version get)
+          NEW_VERSION=$(echo "$NEW_OUTPUT" | grep '^VERSION:' | cut -d: -f2- | tr -d ' ')
+          echo "RELEASE_VERSION=$NEW_VERSION" >> "$GITHUB_ENV"
+
+      - name: Update Lockfiles
+        if: steps.check_release.outputs.should_run == 'true'
+        run: |
+          source .venv/bin/activate
+          project venv lockfile --all
+
+      - name: Generate CHANGELOG
+        if: steps.check_release.outputs.should_run == 'true'
+        id: changelog
+        run: |
+          LATEST_TAG=$(project version latest)
+          echo "Latest tag: $LATEST_TAG"
+          
+          if [ -z "$LATEST_TAG" ]; then
+             COMMITS=$(git log --pretty=format:"- %s" --no-merges)
+          else
+             COMMITS=$(git log "${LATEST_TAG}..HEAD" --pretty=format:"- %s" --no-merges)
+          fi
+          
+          # Prepare changelog section
+          DATE=$(date +%Y-%m-%d)
+          NEW_SECTION="## [v${RELEASE_VERSION}] (${DATE})\n\n### Changes\n${COMMITS}\n\n"
+          
+          # Write to body for PR
+          EOF=$(openssl rand -hex 8)
+          {
+            echo "pr_body<<$EOF"
+            echo -e "$NEW_SECTION"
+            echo "$EOF"
+          } >> "$GITHUB_OUTPUT"
+          
+          # Prepend to CHANGELOG.md (assuming there is a placeholder or just prepend to top)
+          echo -e "$NEW_SECTION" > new_changelog.tmp
+          if [ -f CHANGELOG.md ]; then
+             # assuming first line is # Changelog
+             head -n 1 CHANGELOG.md > CHANGELOG_FINAL.md
+             {
+               echo ""
+               cat new_changelog.tmp
+               tail -n +2 CHANGELOG.md
+             } >> CHANGELOG_FINAL.md
+             mv CHANGELOG_FINAL.md CHANGELOG.md
+          else
+             {
+               echo "# Changelog"
+               echo ""
+               cat new_changelog.tmp
+             } > CHANGELOG.md
+          fi
+          rm new_changelog.tmp
+
+      - name: Create Pull Request
+        if: steps.check_release.outputs.should_run == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: bump version to v${{ env.RELEASE_VERSION }} for release"
+          branch: "release/next"
+          title: "Release v${{ env.RELEASE_VERSION }}"
+          body: |
+            This is an automated release PR.
+            
+            ${{ steps.changelog.outputs.pr_body }}
+          labels: "release"

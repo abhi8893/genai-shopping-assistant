@@ -8,6 +8,7 @@ from project.core.version import (
     ALL_COMPONENTS,
     bump_versions,
     compare_versions,
+    get_latest_tag,
     get_release_info,
     get_version_info,
 )
@@ -33,12 +34,32 @@ def get():
 
 
 @version_cli.command()
+def latest():
+    """Get the latest semver tag from git."""
+    repo_root = get_repo_root()
+    try:
+        tag = get_latest_tag(repo_root)
+        if tag:
+            click.echo(tag)
+    except Exception as e:
+        click.secho(f"Error: {e}", fg="red")
+        sys.exit(1)
+
+
+@version_cli.command()
 @click.argument("new_version")
 @click.argument("old_version")
-def compare(new_version: str, old_version: str):
+@click.option(
+    "--no-enforce-unit-bump",
+    is_flag=True,
+    help="Do not enforce single unit bump restriction",
+)
+def compare(new_version: str, old_version: str, no_enforce_unit_bump: bool):
     """Assert new_version > old_version using semver semantics."""
     try:
-        result = compare_versions(new_version, old_version)
+        result = compare_versions(
+            new_version, old_version, enforce_unit_bump=not no_enforce_unit_bump
+        )
         if not result:
             click.secho(
                 f"Error: Version {new_version} must be greater than {old_version}",  # noqa: E501
@@ -79,7 +100,7 @@ def release_info_cmd(branch: str, test_release: bool):
 @click.option(
     "--part",
     required=True,
-    type=click.Choice(["major", "minor", "patch", "prerelease", "build"]),
+    type=click.Choice(["major", "minor", "patch", "prerelease", "build", "stable"]),
     help="Version part to bump",
 )
 @click.option("--prerelease-prefix", help="Prerelease prefix (e.g., rc, dev)")
