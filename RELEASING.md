@@ -711,11 +711,11 @@ The workflow enforces these rules (cannot be bypassed):
 - ✅ Branch must be exactly `main`
 - ✅ Version format: `X.Y.Z-dev.N`
 
-### RC Release (`release/vX.Y.Z` branch)
+### Release Branch (`release/vX.Y.Z` branch)
 - ✅ Branch must match `release/v*`
-- ✅ Version format: `X.Y.Z-rc.N`
+- ✅ Version format: `X.Y.Z-rc.N` (during RC) or `X.Y.Z` (stable, just before merging)
 - ✅ Base version (`X.Y.Z`) must match branch version
-- ✅ CHANGELOG entry required: `[v0.1.0-rc.N]`
+- ✅ CHANGELOG entry required: `[vX.Y.Z-rc.N]` or `[vX.Y.Z]`
 
 ### Stable Release (`main` branch)
 - ✅ Branch must be exactly `main`
@@ -728,11 +728,12 @@ The workflow enforces these rules (cannot be bypassed):
 
 ```mermaid
 graph TD
-    subgraph develop["🔵 Develop Branch"]
-        D1["develop<br/>(ongoing development)"]
-        D2["Version: X.Y.Z-devN<br/>(manual edit)"]
-        D3["Commit with or without<br/>[include-slow-tests]"]
-        D1 --> D2 --> D3
+    subgraph main_dev["🔵 Main Branch (Dev)"]
+        D1["main<br/>(ongoing development)"]
+        D2["Version: X.Y.Z-dev.N<br/>(bump via cli)"]
+        D3["Push to main"]
+        D4["Auto Release PR<br/>(release/next)"]
+        D1 --> D2 --> D3 --> D4
     end
 
     subgraph release["🟡 Release Branch"]
