@@ -71,6 +71,15 @@ def bump_part(
     prerelease_prefix: str | None = None,
     allow_downgrade: bool = False,
 ) -> semver.Version:
+    if part == "stable":
+        if version.prerelease is None:
+            raise ValueError(f"Version {version} is already a stable release")
+        ver_dict = version.to_dict()
+        ver_dict["prerelease"] = None
+        ver_dict["build"] = None
+        next_version = semver.Version(**ver_dict)
+        return next_version
+
     is_prerelease = part == "prerelease"
 
     if is_prerelease:
@@ -189,14 +198,66 @@ def get_version_info(repo_root: Path) -> VersionInfo:
     return VersionInfo(version=version, release_type=release_type)
 
 
-def compare_versions(new_version: str, old_version: str) -> bool:
+def get_valid_next_versions(old_ver: semver.Version) -> set[semver.Version]:
+    valid = set()
+
+    if old_ver.prerelease:
+        # Increment existing prerelease
+        valid.add(old_ver.next_version("prerelease"))
+        # Upgrade to rc
+        ver_dict = old_ver.to_dict()
+        ver_dict["prerelease"] = "rc.0"
+        valid.add(semver.Version(**ver_dict))
+        # Upgrade to stable
+        ver_dict["prerelease"] = None
+        valid.add(semver.Version(**ver_dict))
+    else:
+        # New prerelease tracks
+        base_bumps = []
+        if old_ver.patch > 0:
+            base_bumps.append(old_ver.next_version("patch"))
+        elif old_ver.minor > 0:
+            base_bumps.append(old_ver.next_version("minor"))
+            base_bumps.append(old_ver.next_version("patch"))
+        else:
+            base_bumps.append(old_ver.next_version("major"))
+            base_bumps.append(old_ver.next_version("minor"))
+            base_bumps.append(old_ver.next_version("patch"))
+
+        for base in base_bumps:
+            valid.add(base)
+            b_dict = base.to_dict()
+            b_dict["prerelease"] = "dev.0"
+            valid.add(semver.Version(**b_dict))
+            b_dict["prerelease"] = "rc.0"
+            valid.add(semver.Version(**b_dict))
+
+    return valid
+
+
+def compare_versions(
+    new_version: str, old_version: str, enforce_unit_bump: bool = True
+) -> bool:
     try:
         new_ver = semver.Version.parse(new_version)
         old_ver = semver.Version.parse(old_version)
     except ValueError as e:
         raise ValueError(f"Invalid version: {e}") from e
 
-    return new_ver > old_ver
+    if new_ver <= old_ver:
+        raise ValueError(
+            f"New version {new_version} must be greater than {old_version}"
+        )
+
+    if enforce_unit_bump:
+        valid_next_versions = get_valid_next_versions(old_ver)
+        if new_ver not in valid_next_versions:
+            valid_strs = sorted(str(v) for v in valid_next_versions if v > old_ver)
+            raise ValueError(
+                f"Version {new_version} is not a valid single increment from {old_version}. "  # noqa: E501
+                f"Valid options are: {', '.join(valid_strs)}"
+            )
+    return True
 
 
 # TODO: Refactor this function to be more modular and testable
@@ -212,44 +273,52 @@ def get_release_info(  # noqa: C901
         return ReleaseInfo(version, tag_name, release_type, branch, test_release)
 
     if branch == "main":
-        if release_type != "stable":
+        if release_type not in ["dev", "stable"]:
             raise ValueError(
-                f"Main branch requires stable release type, got: {release_type}"
+                f"Main branch requires dev or stable release type, got: {release_type}"
             )
-        if not re.match(r"^[0-9]+\.[0-9]+\.[0-9]+$", version):
+        if release_type == "stable" and not re.match(
+            r"^[0-9]+\.[0-9]+\.[0-9]+$", version
+        ):
             raise ValueError(
                 f"Stable release requires X.Y.Z version format, got: {version}"
             )
-
-    elif re.match(r"^release/v[0-9]+\.[0-9]+\.[0-9]+$", branch):
-        if release_type != "rc":
-            raise ValueError(
-                f"Release branch requires rc release type, got: {release_type}"
-            )
-        if not re.match(r"^[0-9]+\.[0-9]+\.[0-9]+-rc\.[0-9]+$", version):
-            raise ValueError(
-                f"RC release requires X.Y.Z-rc.N version format, got: {version}"
-            )
-        base_version = version.split("-rc")[0]
-        branch_version = branch.replace("release/v", "")
-        if base_version != branch_version:
-            raise ValueError(
-                f"Version base {base_version} does not match branch version {branch_version}"  # noqa: E501
-            )
-
-    elif branch == "develop":
-        if release_type != "dev":
-            raise ValueError(
-                f"Develop branch requires dev release type, got: {release_type}"
-            )
-        if not re.match(r"^[0-9]+\.[0-9]+\.[0-9]+-dev\.[0-9]+$", version):
+        if release_type == "dev" and not re.match(
+            r"^[0-9]+\.[0-9]+\.[0-9]+-dev\.[0-9]+$", version
+        ):
             raise ValueError(
                 f"Dev release requires X.Y.Z-dev.N version format, got: {version}"
             )
 
+    elif branch.startswith("release/"):
+        if release_type not in ["rc", "stable"]:
+            raise ValueError(
+                f"Release branch requires rc or stable release type, got: {release_type}"  # noqa: E501
+            )
+        if release_type == "rc" and not re.match(
+            r"^[0-9]+\.[0-9]+\.[0-9]+-rc\.[0-9]+$", version
+        ):
+            raise ValueError(
+                f"RC release requires X.Y.Z-rc.N version format, got: {version}"
+            )
+        if release_type == "stable" and not re.match(
+            r"^[0-9]+\.[0-9]+\.[0-9]+$", version
+        ):
+            raise ValueError(
+                f"Stable release requires X.Y.Z version format, got: {version}"
+            )
+
+        if branch.startswith("release/v"):
+            branch_version = branch.replace("release/v", "")
+            base_version = version.split("-")[0]
+            if base_version != branch_version:
+                raise ValueError(
+                    f"Version base {base_version} does not match branch version {branch_version}"  # noqa: E501
+                )
+
     else:
         raise ValueError(
-            f"Releases can only be triggered from develop, release/vX.Y.Z, or main. Current branch: {branch}"  # noqa: E501
+            f"Releases can only be triggered from main or release/* branches. Current branch: {branch}"  # noqa: E501
         )
 
     return ReleaseInfo(version, tag_name, release_type, branch, test_release)
