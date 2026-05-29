@@ -10,11 +10,6 @@ name: Release
 #   stable (main branch):            X.Y.Z          e.g. 0.1.0
 
 on:
-  workflow_run:
-    workflows: ["Main workflow"]
-    types: [completed]
-    branches:
-      - main
   workflow_dispatch:
     inputs:
       test_release:

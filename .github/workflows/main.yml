@@ -408,3 +408,37 @@ jobs:
         run: |
           echo "One or more jobs failed or were cancelled."
           exit 1
+
+      - name: Trigger Release Workflow
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ secrets.GENAI_SHOP_ASST_REPO_PR_PAT }}
+        run: |
+          SHA="${{ github.sha }}"
+          echo "Checking if commit $SHA is a merge from a release branch..."
+          
+          # Use GraphQL to find the PR associated with this commit (works for squash merges too)
+          PR_HEAD=$(gh api graphql -F sha="$SHA" -F owner="${{ github.repository_owner }}" -F repo="${{ github.event.repository.name }}" -f query="
+            query($owner: String!, $repo: String!, $sha: String!) {
+              repository(owner: $owner, name: $repo) {
+                object(expression: $sha) {
+                  ... on Commit {
+                    associatedPullRequests(first: 1) {
+                      nodes {
+                        headRefName
+                      }
+                    }
+                  }
+                }
+              }
+            }" --jq ".data.repository.object.associatedPullRequests.nodes[0].headRefName // empty")
+            
+          echo "Associated PR head branch: $PR_HEAD"
+          
+          if [[ "$PR_HEAD" == release/* ]]; then
+            echo "✅ Release branch merge detected. Triggering release.yml..."
+            gh workflow run release.yml --ref main
+          else
+            echo "⏭️ Not a release branch merge. Skipping release trigger."
+          fi
+
