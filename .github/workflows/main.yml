@@ -418,7 +418,9 @@ jobs:
           echo "Checking if commit $SHA is a merge from a release branch..."
           
           # Use GraphQL to find the PR associated with this commit (works for squash merges too)
-          PR_HEAD=$(gh api graphql -F sha="$SHA" -F owner="${{ github.repository_owner }}" -F repo="${{ github.event.repository.name }}" -f query="
+          # Disable SC2016 warning as GraphQL query uses $ variables that shouldn't be expanded by Bash
+          # shellcheck disable=SC2016
+          PR_HEAD=$(gh api graphql -F sha="$SHA" -F owner="${{ github.repository_owner }}" -F repo="${{ github.event.repository.name }}" -f query='
             query($owner: String!, $repo: String!, $sha: String!) {
               repository(owner: $owner, name: $repo) {
                 object(expression: $sha) {
@@ -431,7 +433,7 @@ jobs:
                   }
                 }
               }
-            }" --jq ".data.repository.object.associatedPullRequests.nodes[0].headRefName // empty")
+            }' --jq ".data.repository.object.associatedPullRequests.nodes[0].headRefName // empty")
             
           echo "Associated PR head branch: $PR_HEAD"
           
