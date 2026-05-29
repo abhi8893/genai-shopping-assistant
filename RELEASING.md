@@ -31,7 +31,7 @@ Automated Release PR opened (branch: release/next, bumps version to 0.1.0)
     ↓
 Review and Merge Release PR to main
     ↓
-Trigger: push/merge to main
+Trigger: automatic (Main workflow detects release/* merge)
 Tag: v0.1.0 (stable release, GitHub Release created)
 ```
 
@@ -50,7 +50,7 @@ Fix bugs? → Bump rc.N, repeat
     ↓
 Bump to stable (0.1.0) on release branch and PR to main
     ↓
-Trigger: push to main (automatic via merge)
+Trigger: automatic (Main workflow detects release/* merge)
 Tag: v0.1.0 (stable release)
 ```
 
@@ -513,13 +513,13 @@ These artifacts are available for download in downstream workflows.
   - Useful when: doing RC releases while slow tests are being skipped in main workflow
 - Ensures both package builds and service image builds are complete (if enabled)
 
-### Graceful Gating for Automated Triggers
+### Smart Triggers for Releases
 
-The Release workflow (`release.yml`) is automatically triggered on the completion of the Main workflow on the `main` branch. However, to prevent premature or unauthorized stable releases from dev/prerelease versions:
+The Release workflow (`release.yml`) is automatically triggered via `workflow_dispatch` by the Main workflow itself upon successful completion, but **only** if the following conditions are met:
+- The push to `main` was a merge commit.
+- The merged PR's source branch started with `release/` (e.g. `release/next` or `release/v0.1.0`).
 
-- **Setup Job Gating**: The `setup` job executes a step to check the release type determined from the code version.
-- **Should Release Output**: If the workflow was auto-triggered via `workflow_run` on `main`, but the detected release type is **not** `stable` (e.g., it is a `dev` or `rc` release), the setup job outputs `should_release=false`.
-- **Job Gating**: All subsequent jobs (`validate`, `test_packages`, `retag_and_push_service_images`, and `tag_and_release`) are gated with `if: needs.setup.outputs.should_release == 'true'`. They will be gracefully skipped, ensuring no accidental tags or releases are generated on regular dev pushes.
+This ensures that the Release workflow is never unnecessarily triggered (and skipped) on standard `feat/*` or `fix/*` merges, keeping the GitHub Actions tab clean.
 
 ### Package Build & Artifact Flow
 
@@ -772,7 +772,7 @@ graph TD
         M1["main<br/>(production-ready)"]
         M2["Version: X.Y.Z<br/>(manual edit on release branch)"]
         M3["PR merge: release/vX.Y.Z → main"]
-        M4["Trigger: push to main (auto)"]
+        M4["Main workflow detects release/* merge"]
     end
 
     subgraph release_workflow["🔶 Release Workflow"]
@@ -786,8 +786,8 @@ graph TD
 
     D3 -->|push commit + Main workflow| MW1
     R3 -->|push commit + Main workflow| MW1
-    M4 -->|Main workflow completed| MW1
-    MW6 -->|Artifacts ready| R5
+    M3 -->|push commit| MW1
+    MW6 -->|Trigger release.yml| R5
 
     style D1 fill:#e3f2fd
     style R1 fill:#fff3e0
