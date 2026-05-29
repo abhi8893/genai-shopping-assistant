@@ -162,7 +162,7 @@ wheels = [
 
 [[package]]
 name = "ecom-backend-service"
-version = "0.1.1.dev0"
+version = "0.1.1"
 source = { editable = "." }
 dependencies = [
     { name = "alembic" },

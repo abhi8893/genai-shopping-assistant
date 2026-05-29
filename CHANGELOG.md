@@ -1,5 +1,17 @@
 # Changelog
 
+## [v0.1.1] (2026-05-29)
+
+### Changes
+- ci: fix gh api graphql variable expansion issue in release trigger (#312)
+- fix: release process (auto trigger, changelog generation) (#309)
+- fix: release-pr GH TOKEN fix, update ga step to peter-evans/create-pull-request@v8 (#306)
+- fix: release-pr auto triggering, and CHANGELOG CI generation (#305)
+- feat: modifications for revamped release process (#304)
+- release: `v0.1.0`: Merge back to develop (#302)
+
+
+
 ## [v0.1.0] - 2026-05-27
 
 ### 1st Release 🎉
