@@ -717,7 +717,9 @@ The workflow enforces these rules (cannot be bypassed):
 - ✅ Branch must be exactly `main`
 - ✅ Version format: `X.Y.Z-dev.N`
 
-### Release Branch (`release/vX.Y.Z` or `release/next` branch)
+### Release Branch (`release/next` or `release/vX.Y.Z` branch)
+- **`release/next`**: Auto-generated branch for standard releases.
+- **`release/vX.Y.Z`**: Manual release branch created by developers for release candidate (RC) cycles. First RC releases are done here, and merging this to `main` creates the final stable release.
 - ✅ Branch must start with `release/`
 - ✅ Version format: `X.Y.Z-rc.N` (during RC) or `X.Y.Z` (stable, just before merging)
 - ✅ If branch starts with `release/v`, the base version (`X.Y.Z`) must match branch version
