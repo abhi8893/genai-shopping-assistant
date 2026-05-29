@@ -1,5 +1,20 @@
 # Changelog
 
+## [v0.1.1] (2026-05-29)
+
+### Changes
+
+#### Revamped release process
+
+- Migrated to a single-branch model on `main`, removing `develop` branch and sync-back automation. (#302, #304)
+- Created `release-pr.yml` workflow to generate pull requests, version bumps, and changelogs. (#304)
+- Added workflow gating to skip stable release steps on development or release-candidate pushes. (#305)
+- Configured main workflow to dispatch release workflows upon merging release branches. (#309, #312)
+- Updated version script to validate version increments, added `--part stable`, and added bypass flag. (#304)
+- Integrated `semver` package for tag checks and updated changelog search for squashed commits. (#304, #309)
+- Corrected GraphQL query variable expansion in release trigger and resolved virtual environment paths in runner jobs. (#305, #312)
+- Updated runner step to `peter-evans/create-pull-request@v8` and corrected credentials. (#306)
+
 ## [v0.1.0] - 2026-05-27
 
 ### 1st Release 🎉
