@@ -78,7 +78,18 @@ jobs:
           if [ -z "$LATEST_TAG" ]; then
              COMMITS=$(git log --pretty=format:"- %s" --no-merges)
           else
-             COMMITS=$(git log "${LATEST_TAG}..HEAD" --pretty=format:"- %s" --no-merges)
+             # Get the actual commit the tag points to (falling back to HEAD if it fails somehow)
+             TAG_COMMIT=$(git rev-list -n 1 "$LATEST_TAG" || true)
+             
+             if [ -n "$TAG_COMMIT" ] && git merge-base --is-ancestor "$TAG_COMMIT" HEAD 2>/dev/null; then
+                 # If tag is an ancestor of HEAD, use standard range
+                 COMMITS=$(git log "${LATEST_TAG}..HEAD" --pretty=format:"- %s" --no-merges)
+             else
+                 # If tag is NOT an ancestor (e.g. was squashed, rebased, or orphaned)
+                 # Get the commit date of the tag and fetch commits after it
+                 TAG_DATE=$(git log -1 --format=%cI "$LATEST_TAG")
+                 COMMITS=$(git log --since="$TAG_DATE" --pretty=format:"- %s" --no-merges)
+             fi
           fi
           
           # Prepare changelog section

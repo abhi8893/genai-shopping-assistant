@@ -10,11 +10,6 @@ name: Release
 #   stable (main branch):            X.Y.Z          e.g. 0.1.0
 
 on:
-  workflow_run:
-    workflows: ["Main workflow"]
-    types: [completed]
-    branches:
-      - main
   workflow_dispatch:
     inputs:
       test_release:
@@ -131,7 +126,6 @@ jobs:
       version: ${{ steps.release_info.outputs.version }}
       tag_name: ${{ steps.release_info.outputs.tag_name }}
       release_type: ${{ steps.release_info.outputs.release_type }}
-      should_release: ${{ steps.release_info.outputs.should_release }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -189,18 +183,10 @@ jobs:
             echo "test_release=$TEST_RELEASE"
           } >> "$GITHUB_OUTPUT"
 
-          if [ "${{ github.event_name }}" = "workflow_run" ] && [ "$RELEASE_TYPE" != "stable" ]; then
-            echo "Auto-triggered release workflow only runs for stable releases. Current type is $RELEASE_TYPE. Skipping."
-            echo "should_release=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "should_release=true" >> "$GITHUB_OUTPUT"
-          fi
-
   validate:
     name: Validate Release
     runs-on: ubuntu-latest
     needs: setup
-    if: needs.setup.outputs.should_release == 'true'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -254,7 +240,6 @@ jobs:
     name: Test Packages
     runs-on: ubuntu-latest
     needs: [check_upstream_workflow, setup, validate]
-    if: needs.setup.outputs.should_release == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -325,7 +310,6 @@ jobs:
       matrix:
         service: [ecom-backend, shopping-assistant]
     needs: [check_upstream_workflow, setup, validate, test_packages]
-    if: needs.setup.outputs.should_release == 'true'
     permissions:
       contents: read
       packages: write
@@ -374,7 +358,6 @@ jobs:
     name: Tag and Release
     runs-on: ubuntu-latest
     needs: [check_upstream_workflow, setup, validate, test_packages]
-    if: needs.setup.outputs.should_release == 'true'
     permissions:
       contents: write
     steps:
